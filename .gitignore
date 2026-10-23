@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# 运行时数据（含 API Key 等配置，不入库）
+/data/
+logs/
+
+# 内部资料（不随公开仓库分发）
+docs-internal/
+
+# 环境与系统文件
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

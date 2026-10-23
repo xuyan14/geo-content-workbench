@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoContent Workbench · GEO 内容工作台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  /* GEO-style-kit v2.2 · GEO 工作台主题令牌（品牌粉 #E6007E 体系） */
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"PingFang SC"', '"Microsoft YaHei"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        },
+        colors: {
+          vip: {  // 品牌：#E6007E / hover #C9006D / active #AC005E；选中浅粉 #FFF0F7、深粉字 #BE0067
+            50: '#FFF0F7', 100: '#FDE7F1', 200: '#F5C2DC', 300: '#F5C2DC',
+            400: '#F04C9C', 500: '#E6007E', 600: '#E6007E', 700: '#C9006D',
+            800: '#AC005E', 900: '#8E0050',
+          },
+          slate: {  // 中性：主文字 #212121 / 辅助 #757575 / 分隔线 #ECECEE / 页面 #F7F8FA
+            50: '#F7F8FA', 100: '#ECECEE', 200: '#E4E4E8', 300: '#C9C9CE',
+            400: '#A7A3AD', 500: '#757575', 600: '#4A4A52', 700: '#374151',
+            800: '#212121', 900: '#16161A',
+          },
+          emerald: { 50: '#EAF6F0', 100: '#D5ECDF', 500: '#137653', 600: '#137653', 700: '#0F5E43' },  // 成功 #137653
+          rose: { 50: '#FFF0EE', 100: '#FBDFDC', 400: '#C84A3C', 500: '#B42318', 600: '#B42318', 700: '#991D15' },  // 错误 #B42318
+          amber: { 50: '#FFF5DF', 100: '#FCEBC4', 400: '#C38A36', 500: '#A96F00', 600: '#8A5900', 700: '#6F4700' },  // 警告 #8A5900
+          sky: { 50: '#EEF3FF', 500: '#365DB8', 600: '#365DB8', 700: '#2C4FA0' },  // 信息 #365DB8
+          blue: { 50: '#EEF3FF', 500: '#365DB8', 600: '#365DB8', 700: '#2C4FA0' },
+        },
+      },
+    },
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="data/real-queries.js"></script>
+<script src="data/knowledge-cards.js"></script>
+<script src="mock.js"></script>
+<style>
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#D9D9DE;border-radius:4px}::-webkit-scrollbar-thumb:hover{background:#C9C9CE}
+  /* ================= GEO-style-kit v2.2 接入层 =================
+     正文14px / 唯品粉 #E6007E / 轻边框无阴影 / 8px 控件圆角（tokens.json 同源） */
+  body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;color:#212121;background:#F7F8FA;font-variant-numeric:tabular-nums}
+  /* 模块名称 16px/600（规范第3节：不再配置宣传式大标题） */
+  #view h1{font-size:16px;line-height:24px;font-weight:600;color:#212121}
+  #view h1+p{font-size:12px;color:#757575}
+  #modal-root h3,#modal-root .text-lg{font-size:16px;line-height:24px;font-weight:600}
+  /* 侧边导航：40px 高、16px 图文间距、浅粉选中态 + 左侧 3px 品牌竖条（规范第12项保留） */
+  .nav-item{height:40px;font-size:14px;font-weight:450;line-height:20px;color:#374151;border-radius:8px;transition:background .15s,color .15s}
+  .nav-item svg{width:20px;height:20px;stroke-width:1.8}
+  .nav-item.bg-vip-50{position:relative;color:#BE0067;font-weight:600}
+  .nav-item.bg-vip-50::before{content:'';position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:3px;background:#E6007E}
+  .nav-item.bg-vip-50:hover{background:#FFF0F7}
+  /* 面板/卡片：10px 圆角、1px #ECECEE 细边框、无投影（规范第2/3节） */
+  #view .shadow-sm{box-shadow:none;border:1px solid #ECECEE;border-radius:10px}
+  #view .rounded-2xl{border-radius:10px}
+  /* 弹窗：12px 圆角、深色柔和投影（规范第5节） */
+  #modal-root .rounded-2xl{border-radius:12px}
+  #modal-root .shadow-2xl{box-shadow:0 20px 70px rgba(36,32,41,.15)}
+  /* 按钮：8px 圆角、扁平无渐变无彩色投影（规范第5节） */
+  button.bg-vip-600,a.bg-vip-600{border-radius:8px;background-image:none;box-shadow:none;font-weight:500}
+  /* 选中态 chips（未携带 hover 类）：浅粉底 + 深粉字（geo-tag.selected 规范） */
+  #view button.bg-vip-600:not(.hover\:bg-vip-700),#modal-root button.bg-vip-600:not(.hover\:bg-vip-700){background:#FFF0F7;color:#BE0067;font-weight:600;border:1px solid #F5C2DC}
+  /* 焦点可见性：2px 品牌色轮廓 + 表单聚焦品牌色边（规范第2节） */
+  :focus-visible{outline:2px solid #E6007E;outline-offset:3px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:#E6007E}
+  /* 表格：#F4F5F9 浅灰表头、14px/400/41px、#ECECEE 分隔（规范第3节） */
+  thead tr{background:#F4F5F9}
+  #view th{font-size:14px!important;font-weight:400!important;padding:8px 12px!important;color:#212121!important;height:41px!important}
+  #view tbody tr:hover{background:#FCFAFB}
+  /* 弹窗表单输入：32px 高、22px 行高（规范：复杂表单 32px） */
+  #modal-root input:not([type="checkbox"]):not([type="radio"]){height:32px}
+  /* 桌面按钮基准：32px 高 / 13px/500 / 8px 圆角（规范第3节）；flex 垂直居中，清零纵向内距防溢出 */
+  #view button.bg-vip-600.hover\:bg-vip-700,#modal-root button.bg-vip-600.hover\:bg-vip-700{height:32px!important;min-height:32px!important;font-size:13px!important;font-weight:500;display:inline-flex!important;align-items:center;justify-content:center;padding-top:0!important;padding-bottom:0!important}
+  #modal-root button.px-5,#modal-root button.px-6{height:32px!important;min-height:32px!important;font-size:13px!important;font-weight:500;display:inline-flex!important;align-items:center;justify-content:center;padding-top:0!important;padding-bottom:0!important}
+  /* 开关：统一 28×16、thumb 12px、品牌粉（规范第3节） */
+  .mon-switch{width:28px!important;height:16px!important;border-radius:12px}
+  .mon-switch span{width:12px!important;height:12px!important;top:2px!important;left:2px!important;transition:transform .15s}
+  .mon-switch[aria-checked="true"],.mon-switch.bg-emerald-500{background:#E6007E!important}
+  .mon-switch[aria-checked="true"] span,.mon-switch.bg-emerald-500 span{transform:translateX(12px)!important}
+  .mon-switch.bg-slate-200{background:#ACA6B4!important}
+  /* KPI 特色卡：浅粉渐变 + 细粉边（规范第11项保留） */
+  .hero-metric{background:linear-gradient(120deg,#FFF 40%,#FFF6FA)!important;border:1px solid #F5C2DC!important;border-radius:10px!important;color:#212121!important;box-shadow:none!important}
+  .hero-metric .text-white{color:#BE0067}
+  /* 分区标题：3px 品牌色竖条 */
+  .card-title{position:relative;padding-left:12px}
+  .card-title::before{content:'';position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:2px;background:#E6007E}
+  .markdown h1{font-size:1.5rem;font-weight:700;margin:1rem 0 .5rem}
+  .markdown h2{font-size:1.2rem;font-weight:600;margin:1rem 0 .4rem}
+  .markdown h3{font-size:1.05rem;font-weight:600;margin:.8rem 0 .3rem}
+  .markdown p{margin:.5rem 0;line-height:1.75}
+  .markdown ul,.markdown ol{margin:.5rem 0 .5rem 1.5rem;list-style:disc}
+  .markdown li{margin:.25rem 0;line-height:1.7}
+  .markdown table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.875rem}
+  .markdown th,.markdown td{border:1px solid #ECECEE;padding:.4rem .6rem;text-align:left}
+  .markdown blockquote{border-left:4px solid #C38A36;background:#FFF5DF;padding:.5rem .9rem;margin:.6rem 0;border-radius:0 6px 6px 0}
+  .markdown code{background:#F0F1F4;padding:.1rem .3rem;border-radius:4px;font-size:.85em}
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- 顶部栏（规范：65px 白底、模块名称；移除宣传式副标题与彩色投影） -->
+<header class="fixed top-0 left-0 right-0 h-[65px] z-30 bg-white border-b border-[#ECECEE] flex items-center justify-between px-8">
+  <div class="flex items-center gap-3">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#E6007E]"></span>
+    <span class="font-semibold text-sm text-slate-800">GEO 工作台</span>
+  </div>
+  <div class="flex items-center gap-5">
+    <span id="topbar-mock" class="hidden text-xs px-3 py-1 rounded bg-vip-50 text-vip-700 border border-vip-200">● 离线模式</span>
+  </div>
+</header>
+
+<div class="flex min-h-screen">
+  <!-- 侧边栏：232px、#FCFCFD、右侧 #ECECEE 细分割线（规范第2/4节） -->
+  <aside class="w-[232px] bg-[#FCFCFD] flex flex-col fixed top-[65px] bottom-0 left-0 border-r border-[#ECECEE]">
+    <div class="px-5 pt-4 pb-2 text-xs text-slate-400 tracking-[0.18em]">GEO 工作流</div>
+    <nav class="flex-1 py-1" id="nav"></nav>
+    <div class="px-5 py-4 text-xs text-slate-400 border-t border-slate-100">
+      <div id="mock-badge" class="hidden text-amber-600">● 离线模式</div>
+    </div>
+  </aside>
+
+  <!-- 主内容：32px 边距（规范第4节） -->
+  <main class="flex-1 ml-[232px] px-8 pt-[89px] pb-8">
+    <div id="view"></div>
+  </main>
+</div>
+
+<!-- 弹层容器 -->
+<div id="modal-root"></div>
+<!-- 图表悬浮提示 -->
+<div id="svg-tip" class="hidden fixed z-50 bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2 w-44 pointer-events-none"></div>
+<!-- toast -->
+<div id="toast-root" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
+
+<script>
+/* ================= 基础工具 ================= */
+/* API 层
+ * - 在线模式：直连后端 REST API
+ * - 离线模式（localStorage wb_mock）：后端不可达时自动进入，页面保持可用 */
+const MOCK_KEY = 'wb_mock';
+const mockEnabled = () => localStorage.getItem(MOCK_KEY) === '1';
+const realAPI = (path, opts = {}) => fetch('/api' + path, {
+  headers: {'Content-Type': 'application/json'}, ...opts,
+  body: opts.body ? JSON.stringify(opts.body) : undefined,
+}).then(async r => {
+  const data = r.status === 204 ? null : await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+});
+async function API(path, opts = {}) {
+  if (mockEnabled() && window.mockAPI) return window.mockAPI(path, opts);
+  try {
+    return await realAPI(path, opts);
+  } catch (e) {
+    if (e instanceof TypeError && window.mockAPI) {  // 网络不可达 → 离线模式
+      localStorage.setItem(MOCK_KEY, '1');
+      toast('后端连接失败，已进入离线模式', 'info');
+      return window.mockAPI(path, opts);
+    }
+    throw e;
+  }
+}
+function toggleMock(on) {
+  localStorage.setItem(MOCK_KEY, on ? '1' : '0');
+  toast(on ? '已进入离线模式' : '已恢复在线模式');
+  render();
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = s => s ? new Date(s).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+
+function toast(msg, type = 'ok') {
+  const colors = {ok: 'bg-emerald-600', err: 'bg-rose-600', info: 'bg-slate-800'};
+  const el = document.createElement('div');
+  el.className = `${colors[type] || colors.info} text-white text-sm px-4 py-2.5 rounded-lg shadow-lg opacity-0 transition-opacity`;
+  el.textContent = msg;
+  document.getElementById('toast-root').appendChild(el);
+  requestAnimationFrame(() => el.classList.remove('opacity-0'));
+  setTimeout(() => { el.classList.add('opacity-0'); setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+function openModal(html, width = 'max-w-2xl') {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="fixed inset-0 bg-slate-900/50 z-40 flex items-start justify-center overflow-y-auto py-10" onclick="if(event.target===this)closeModal()">
+    <div class="bg-white rounded-2xl shadow-2xl ${width} w-full mx-4" onclick="event.stopPropagation()">${html}</div></div>`;
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+/* ================= 全局状态（单平台模式） ================= */
+let platform = null;
+let templates = ['对比选购', '案例实证', '风险避坑', 'FAQ问答', '场景方案'];
+const selBrandVal = () => platform ? platform.id : 0;
+async function refreshPlatform() { platform = await API('/platform'); }
+
+const NAV = [
+  ['monitor', '监测中心', 'M18 20V10M12 20V4M6 20v-6'],
+  ['topics', '选题库', 'M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5'],
+  ['answers', '大模型回答记录', 'M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z'],
+  ['knowledge', '知识库', 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15'],
+  ['factory', '内容工厂', 'M13 10V3L4 14h7v7l9-11h-7'],
+];
+
+function renderNav() {
+  const cur = location.hash.replace('#/', '') || 'monitor';
+  document.getElementById('nav').innerHTML = NAV.map(([id, label, d]) => `
+    <a href="#/${id}" class="nav-item flex items-center gap-4 mx-3 px-4 py-2.5 rounded-lg text-sm hover:bg-[#F2F2F5] hover:text-vip-500 ${cur === id ? 'bg-vip-50 text-vip-600 font-medium' : 'text-slate-600'}">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${d}"/></svg>${label}
+    </a>`).join('');
+  const on = mockEnabled();
+  const badge = document.getElementById('mock-badge');
+  if (badge) badge.classList.toggle('hidden', !on);
+  const tb = document.getElementById('topbar-mock');
+  if (tb) tb.classList.toggle('hidden', !on);
+  const mt = document.getElementById('mock-toggle');
+  if (mt) {
+    mt.checked = on;
+    document.getElementById('mock-track').className = `w-9 h-5 rounded-full relative transition ${on ? 'bg-vip-500' : 'bg-slate-200'}`;
+    document.getElementById('mock-knob').className = `absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-4' : ''}`;
+  }
+}
+
+/* ================= 品牌选择器（已移除：单平台模式） ================= */
+
+
+/* ================= 平台信息（内置配置，仅后端/设置页只读展示） ================= */
+const v = id => document.getElementById(id).value.trim();
+
+/* ================= 知识库（还原 GEO 知识治理中心的知识卡视图：浏览 + 审核 + 详情） ================= */
+const KB_PAGE = 30;
+const KB_QSTYLE = { '免审': 'bg-emerald-50 text-emerald-600', '抽检': 'bg-amber-50 text-amber-600', '必审': 'bg-rose-50 text-rose-600' };
+const KB_TAG_LABEL = { passed: '已通过', rejected: '已拒绝', deleted: '已删除' };
+let kbState = { q: '', quality: '', topic: '', src: '', tag: '', cautionOnly: false, page: KB_PAGE };
+let kbCards = [];
+
+async function viewKnowledge() {
+  document.getElementById('view').innerHTML = '<div class="py-16 text-center text-slate-400 text-sm">加载中…</div>';
+  kbCards = await API('/knowledge-cards').catch(() => []);
+  kbState.page = KB_PAGE;
+  renderKnowledge();
+}
+const kbUniq = (arrs) => [...new Set([].concat(...arrs))].filter(Boolean).sort();
+function kbFiltered() {
+  const q = kbState.q.trim().toLowerCase();
+  return kbCards.filter(c => {
+    if (kbState.quality && c.quality !== kbState.quality) return false;
+    if (kbState.topic && !(c.topics || []).includes(kbState.topic)) return false;
+    if (kbState.src && !(c.source_types || []).includes(kbState.src)) return false;
+    if (kbState.cautionOnly && !c.cautions_count) return false;
+    if (kbState.tag === 'untagged' && c.review) return false;
+    if (['passed', 'rejected', 'deleted'].includes(kbState.tag) && (!c.review || c.review.tag !== kbState.tag)) return false;
+    if (q && !(c.search_text || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function kbChip(c) {
+  const rv = c.review;
+  return [
+    `<span class="px-1.5 py-0.5 rounded ${KB_QSTYLE[c.quality] || 'bg-slate-100 text-slate-500'}">${esc(c.quality || '未定级')}</span>`,
+    rv ? `<span class="px-1.5 py-0.5 rounded ${rv.tag === 'passed' ? 'bg-emerald-600 text-white' : rv.tag === 'deleted' ? 'bg-slate-500 text-white' : 'bg-rose-500 text-white'}">${KB_TAG_LABEL[rv.tag]}</span>` : '',
+    ...(c.topics || []).map(t => `<span class="px-1.5 py-0.5 rounded bg-vip-50 text-vip-600">${esc(t)}</span>`),
+    ...(c.categories || []).map(t => `<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">${esc(t)}</span>`),
+    ...(c.pubs || []).map(p => `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500" title="来源主体">${esc(p)}</span>`),
+    ...(c.source_types || []).map(t => `<span class="px-1.5 py-0.5 rounded ${t === '官方' ? 'bg-sky-50 text-sky-700' : t === '转载' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}">${esc(t)}</span>`),
+    c.time ? `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${esc(c.time)}</span>` : '<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-400">time 待补</span>',
+    c.conflicts_count ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">说法不一致</span>' : '',
+    c.merged_count ? `<span class="px-1.5 py-0.5 rounded bg-violet-50 text-violet-600">合并 ${c.merged_count} 张</span>` : '',
+    c.status === '待人工审核' ? '<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-600">待人工审核</span>' : '',
+  ].filter(Boolean).join('');
+}
+function renderKnowledge() {
+  const rows = kbFiltered();
+  const shown = rows.slice(0, kbState.page);
+  const topics = kbUniq(kbCards.map(c => c.topics || []));
+  const srcs = kbUniq(kbCards.map(c => c.source_types || []));
+  const kpi = (val, label, cls = 'text-slate-800') => `<div class="bg-white rounded-xl px-4 py-3 shadow-sm"><b class="text-lg ${cls}">${val}</b><span class="block text-[11px] text-slate-400 mt-0.5">${label}</span></div>`;
+  const kpis = [
+    kpi(`${rows.length} / ${kbCards.length}`, '卡片（当前/全部）'),
+    kpi(kbCards.filter(c => c.quality === '免审').length, '免审（官方·无冲突）', 'text-emerald-600'),
+    kpi(kbCards.filter(c => c.quality === '抽检').length, '抽检（含外部口径）', 'text-amber-600'),
+    kpi(kbCards.filter(c => c.quality === '必审').length, '必审（有事实冲突）', 'text-rose-600'),
+    kpi(kbCards.filter(c => c.status === '待人工审核').length, '待人工审核', 'text-rose-500'),
+    kpi(kbCards.filter(c => c.cautions_count).length, '带使用提醒', 'text-amber-500'),
+    kpi(kbCards.filter(c => c.conflicts_count).length, '含非官方口径冲突'),
+    kpi(kbCards.filter(c => c.review).length, '已审核', 'text-vip-600'),
+  ].join('');
+  const ksel = (id, cur, opts, allLabel) => `<select id="${id}" onchange="setKbFilter('${id}', this.value)" class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600">
+      <option value="">${allLabel}</option>${opts.map(o => `<option value="${esc(o)}" ${o === cur ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  document.getElementById('view').innerHTML = `
+    <div class="flex items-center justify-between mb-5">
+      <div><h1 class="text-2xl font-bold">知识库</h1>
+      <p class="text-slate-500 text-sm mt-1">知识卡治理与文章沉淀，内容将作为生成时的证据注入</p></div>
+      <div class="flex gap-2 items-center">
+        <button onclick="kbAddDocModal()" class="bg-vip-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-vip-700">+ 添加文章</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-4 xl:grid-cols-8 gap-2 mb-4">${kpis}</div>
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-4 flex flex-wrap items-center gap-2">
+      <input id="kb-q" value="${esc(kbState.q)}" oninput="setKbFilter('kb-q', this.value)" placeholder="搜索标题、正文或原文引文" class="flex-1 min-w-[220px] text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-vip-200">
+      ${ksel('kb-quality', kbState.quality, ['免审', '抽检', '必审'], '质量（全部）')}
+      ${ksel('kb-topic', kbState.topic, topics, '主题（全部）')}
+      ${ksel('kb-src', kbState.src, srcs, '来源类型（全部）')}
+      <select id="kb-tag" onchange="setKbFilter('kb-tag', this.value)" class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600">
+        <option value="">标记（全部）</option>
+        ${Object.entries(KB_TAG_LABEL).map(([val, lab]) => `<option value="${val}" ${kbState.tag === val ? 'selected' : ''}>${lab}</option>`).join('')}
+        <option value="untagged" ${kbState.tag === 'untagged' ? 'selected' : ''}>未标记</option>
+      </select>
+      <label class="flex items-center gap-1.5 text-xs text-slate-500"><input type="checkbox" ${kbState.cautionOnly ? 'checked' : ''} onchange="setKbFilter('kb-caution', this.checked)"> 只看需注意</label>
+      <span class="text-xs text-slate-400 ml-auto">显示 ${shown.length} / ${rows.length} 张（全部 ${kbCards.length} 张）</span>
+    </div>
+    <div class="space-y-2.5">
+      ${shown.map(c => `
+      <div class="bg-white rounded-xl shadow-sm p-4 hover:shadow transition ${c.review && c.review.tag === 'deleted' ? 'opacity-55' : ''}">
+        <div class="flex items-start gap-3">
+          <div class="flex-1 min-w-0 cursor-pointer" onclick="kbDetail('${c.card_id}')">
+            <div class="font-medium text-sm">${esc(c.title)}<span class="ml-2 text-[11px] font-mono text-slate-300">${esc(c.card_id)}</span></div>
+            <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">${kbChip(c)}</div>
+            <div class="mt-1.5 text-xs text-slate-500 line-clamp-2">${esc(c.content_head)}…</div>
+          </div>
+          <div class="flex flex-col gap-1.5 shrink-0">
+            <div class="flex gap-1.5">
+              <button onclick="kbReview('${c.card_id}','passed')" class="text-xs px-2.5 py-1.5 rounded border ${c.review && c.review.tag === 'passed' ? 'bg-emerald-600 text-white border-emerald-600' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}">✓ 通过</button>
+              <button onclick="kbReview('${c.card_id}','rejected')" class="text-xs px-2.5 py-1.5 rounded border ${c.review && c.review.tag === 'rejected' ? 'bg-rose-500 text-white border-rose-500' : 'border-rose-200 text-rose-500 hover:bg-rose-50'}">✕ 拒绝</button>
+              <button onclick="kbReview('${c.card_id}','deleted')" class="text-xs px-2.5 py-1.5 rounded border ${c.review && c.review.tag === 'deleted' ? 'bg-slate-500 text-white border-slate-500' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}">删除</button>
+              ${c.review ? `<button onclick="kbReview('${c.card_id}','')" class="text-xs px-2 py-1.5 rounded border border-slate-200 text-slate-400 hover:bg-slate-50" title="取消标记">撤销</button>` : ''}
+            </div>
+            <div class="text-right"><button onclick="kbDetail('${c.card_id}')" class="text-xs text-vip-600 hover:bg-vip-50 px-2 py-1 rounded">详情 →</button></div>
+          </div>
+        </div>
+      </div>`).join('') || '<div class="p-10 text-center text-slate-400 text-sm bg-white rounded-2xl">没有符合条件的卡片</div>'}
+    </div>
+    ${rows.length > kbState.page ? `<div class="text-center mt-4"><button onclick="kbMore()" class="text-sm px-6 py-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:border-vip-300 hover:text-vip-600">继续显示（还有 ${rows.length - kbState.page} 张）</button></div>` : ''}`;
+}
+function setKbFilter(key, val) {
+  if (key === 'kb-q') kbState.q = val;
+  else if (key === 'kb-caution') kbState.cautionOnly = val;
+  else if (key === 'kb-quality') kbState.quality = val;
+  else if (key === 'kb-topic') kbState.topic = val;
+  else if (key === 'kb-src') kbState.src = val;
+  else if (key === 'kb-tag') kbState.tag = val;
+  kbState.page = KB_PAGE;
+  renderKnowledge();
+  const el = document.getElementById('kb-q');
+  if (el && key === 'kb-q') { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+function kbMore() { kbState.page += KB_PAGE; renderKnowledge(); }
+async function kbReview(cardId, tag) {
+  const cur = kbCards.find(x => x.card_id === cardId);
+  const note = cur && cur.review ? cur.review.note || '' : '';
+  const r = await API(`/knowledge-cards/${cardId}/review`, {method: 'POST', body: {tag, note}});
+  if (cur) cur.review = r.tag ? {tag: r.tag, note: r.note} : null;
+  renderKnowledge();
+}
+async function kbDetail(cardId) {
+  const c = await API(`/knowledge-cards/${cardId}`);
+  const rv = c.review;
+  const cautions = (c.cautions || []).length ? `
+    <details open class="border border-amber-200 rounded-lg p-3 bg-amber-50/50"><summary class="text-amber-600 font-medium text-sm cursor-pointer">⚠ 使用提醒 ${c.cautions.length} 条</summary>
+      <ul class="mt-2 space-y-1 text-sm text-slate-600">${c.cautions.map(x => `<li>· ${esc(x)}</li>`).join('')}</ul></details>` : '';
+  const conflicts = (c.conflicts || []).length ? `
+    <div class="border border-rose-200 rounded-lg p-3 bg-rose-50/50 mt-3"><div class="text-rose-600 font-medium text-sm">⚠ 待确认差异（本卡状态已置「待人工审核」）</div>
+      ${c.conflicts.map(cf => `<div class="mt-2 text-sm text-slate-600">${esc(cf.note || '')}</div>
+        ${(cf.counterparts || []).map(cp => `<div class="mt-2 rounded-lg bg-white border border-slate-200 p-2.5">
+          <div class="text-xs text-slate-400">另一说法 · ${esc(cp.card_id || '')} ${esc(cp.title || '')} · ${esc((cp.source_types || []).join(' / '))}</div>
+          <div class="text-sm text-slate-600 mt-1">${esc(cp.content || '')}</div></div>`).join('')}`).join('')}</div>` : '';
+  const sources = (c.sources || []).map(s => `
+    <div class="border border-slate-200 rounded-lg p-2.5">
+      <div class="text-xs text-slate-400">${esc(s.source_type || '')}${s.doc_title ? ' · ' + esc(s.doc_title) : ''}${s.pid ? ' · ' + esc(s.pid) : ''}
+        · ${s.verified ? '<span class="text-emerald-600">引文已核对</span>' : '<span class="text-rose-400">引文待核对</span>'}
+        ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener" class="text-vip-600 hover:underline">原文 ↗</a>` : ''}</div>
+      ${s.quote ? `<div class="text-sm text-slate-600 mt-1">「${esc(s.quote)}」</div>` : ''}
+    </div>`).join('');
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="font-bold text-lg">${esc(c.title)}</div>
+          <div class="text-[11px] font-mono text-slate-300 mt-1">${esc(c.card_id)}${c.version ? ' · 版本 ' + esc(String(c.version)) : ''}</div>
+          <div class="mt-2 flex items-center gap-1.5 flex-wrap">${kbChip(c)}</div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+      </div>
+      <div class="mt-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${esc(c.content || '')}</div>
+      <div class="mt-3">${cautions}${conflicts}</div>
+      ${(c.sources || []).length ? `<div class="mt-4"><div class="font-medium text-sm mb-2">来源引用（${c.sources.length}）</div><div class="space-y-2">${sources}</div></div>` : ''}
+      <div class="mt-5 border-t border-slate-100 pt-4">
+        <div class="text-sm font-medium mb-2">人工审核</div>
+        <div class="flex gap-2 flex-wrap">
+          ${['passed', 'rejected', 'deleted'].map(t => `<button onclick="kbReviewDetail('${cardId}','${t}')" class="text-sm px-3 py-1.5 rounded-lg border ${rv && rv.tag === t ? (t === 'passed' ? 'bg-emerald-600 text-white border-emerald-600' : t === 'rejected' ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-500 text-white border-slate-500') : 'border-slate-200 text-slate-500 hover:bg-slate-50'}">${KB_TAG_LABEL[t]}</button>`).join('')}
+          ${rv ? `<button onclick="kbReviewDetail('${cardId}','')" class="text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50">撤销标记</button>` : ''}
+        </div>
+        <textarea id="kb-note" rows="2" placeholder="审核备注（可选，随标记一起保存）" class="w-full mt-3 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">${esc(rv ? rv.note || '' : '')}</textarea>
+        <div class="flex justify-end mt-2"><button onclick="kbSaveNote('${cardId}')" class="text-sm px-4 py-1.5 rounded-lg bg-vip-600 text-white hover:bg-vip-700">保存备注</button></div>
+      </div>
+    </div>`, 'max-w-3xl');
+}
+async function kbReviewDetail(cardId, tag) {
+  const note = (document.getElementById('kb-note') || {}).value || '';
+  const r = await API(`/knowledge-cards/${cardId}/review`, {method: 'POST', body: {tag, note}});
+  const c = kbCards.find(x => x.card_id === cardId);
+  if (c) c.review = r.tag ? {tag: r.tag, note: r.note} : null;
+  renderKnowledge();
+  if (!tag) closeModal(); else kbDetail(cardId);
+}
+async function kbSaveNote(cardId) {
+  const note = document.getElementById('kb-note').value;
+  const cur = kbCards.find(x => x.card_id === cardId);
+  const tag = cur && cur.review ? cur.review.tag : 'passed';
+  await API(`/knowledge-cards/${cardId}/review`, {method: 'POST', body: {tag, note}});
+  if (cur) cur.review = {tag, note};
+  toast('备注已保存'); renderKnowledge();
+}
+let kbAddMode = 'paste';
+function kbAddDocModal(mode) {
+  kbAddMode = mode || 'paste';
+  const tab = (m, l) => `<button onclick="kbAddDocModal('${m}')" class="flex-1 text-sm py-2 rounded-lg transition-colors ${kbAddMode === m ? 'bg-vip-600 text-white' : 'text-slate-500 hover:bg-slate-50'}">${l}</button>`;
+  const body = kbAddMode === 'paste' ? `
+    <input id="kb-doc-title" placeholder="文章标题，如：品牌事实卡 / 产品白皮书 / 客户案例" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+    <textarea id="kb-doc-content" rows="11" placeholder="粘贴文章全文（Markdown 优先，会按标题结构自动分块进入证据池）" class="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-vip-200"></textarea>
+    <div class="flex justify-end gap-2 mt-4">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+      <button onclick="kbSaveDoc()" class="px-4 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">保存文章</button>
+    </div>` : `
+    <input id="kb-url" placeholder="https://example.com/article（参考网页链接）" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+    <input id="kb-doc-title" placeholder="标题（留空自动取网页标题）" class="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+    <div class="text-xs text-slate-400 mt-3 leading-relaxed">点击导入后会抓取网页，自动剥离导航/脚本等噪音并提取正文，按结构分块进入证据池。</div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+      <button onclick="kbImportUrl()" class="px-4 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">解析并导入</button>
+    </div>`;
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-4">添加文章</div>
+      <div class="flex gap-1.5 bg-slate-100 rounded-lg p-1 mb-4">${tab('paste', '📄 粘贴文章')}${tab('url', '🔗 网页链接')}</div>
+      ${body}
+    </div>`, 'max-w-2xl');
+}
+async function kbSaveDoc() {
+  const title = v('kb-doc-title'), content = document.getElementById('kb-doc-content').value;
+  if (!title || !content.trim()) return toast('标题和正文不能为空', 'err');
+  try {
+    const r = await API('/documents', {method: 'POST', body: {brand_id: selBrandVal(), title, content, source: 'paste'}});
+    closeModal(); toast(`文章已入库，切分为 ${r.chunk_count} 个知识分块`);
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function kbImportUrl() {
+  const url = v('kb-url'); if (!url.trim()) return toast('请输入网页链接', 'err');
+  toast('正在抓取并解析网页…', 'info');
+  try {
+    const r = await API('/documents/url', {method: 'POST', body: {brand_id: selBrandVal(), url: url.trim(), title: v('kb-doc-title') || ''}});
+    closeModal(); toast(`《${r.title.slice(0, 24)}》已导入，正文 ${r.content_len} 字 · ${r.chunk_count} 个分块`);
+  } catch (e) { toast(e.message, 'err'); }
+}
+/* ================= 选题库（统一问题管理：监测问题 + 内容生产入口） ================= */
+async function viewTopics() {
+  const bid = platform ? platform.id : 0;
+  if (!bid) return emptyView('平台信息未加载，请刷新页面重试');
+  document.getElementById('view').innerHTML = '<div class="py-16 text-center text-slate-400 text-sm">加载中…</div>';
+  const [mqueries, topics] = await Promise.all([
+    API(`/monitor/queries?brand_id=${bid}`).catch(() => []),
+    API(`/topics?brand_id=${bid}`).catch(() => []),
+  ]);
+  /* 近两期监测表现 */
+  let latest = null, prev = null, latestRows = [], prevRows = [], latestRunId = null, prevRunId = null;
+  try {
+    const runs = await API(`/monitor/runs?brand_id=${bid}`);
+    const done = runs.filter(r => r.status === 'completed')
+      .sort((a, b) => ((a.started_at || '') > (b.started_at || '') ? 1 : -1)).slice(-2);
+    prev = done.length > 1 ? done[0] : null;
+    latest = done[done.length - 1] || null;
+    if (latest) {
+      latestRunId = latest.id;
+      const da = await API(`/monitor/analysis?brand_id=${bid}&run_id=${latest.id}`);
+      latestRows = da.queries || [];
+      window._monRows = latestRows;
+      if (prev) {
+        const dp = await API(`/monitor/analysis?brand_id=${bid}&run_id=${prev.id}`);
+        prevRows = dp.queries || [];
+        prevRunId = prev.id;
+      }
+    }
+  } catch (e) {}
+  const top3Cache = {};
+  const fetchTop3 = async (runId, qid) => {
+    const key = runId + ':' + qid;
+    if (key in top3Cache) return top3Cache[key];
+    const ss = await API(`/monitor/samples?run_id=${runId}&query_id=${qid}`).catch(() => []);
+    const val = ss.filter(s => !s.error);
+    const t3 = val.length ? Math.round(1000 * val.filter(s => s.brand_rank >= 1 && s.brand_rank <= 3).length / val.length) / 10 : null;
+    top3Cache[key] = {t3, samples: val};
+    return top3Cache[key];
+  };
+  const rows = [];
+  for (const q of mqueries) {
+    const cur = latestRows.find(r => r.question === q.question);
+    let mon = null;
+    if (cur) {
+      const prv = prevRows.find(r => r.question === q.question);
+      const curData = await fetchTop3(latestRunId, cur.id);
+      const prvData = prv ? await fetchTop3(prevRunId, prv.id) : null;
+      mon = {
+        qid: cur.id, latestRunId, active: q.active,
+        dates: [prev, latest].filter(Boolean).map(r => (r.started_at || '').slice(5, 10).replace('-', '/')),
+        cur: {row: cur, t3: curData.t3, samples: curData.samples},
+        prev: prv ? {row: prv, t3: prvData.t3} : null,
+      };
+    }
+    rows.push({q, mon, topic: topics.find(t => t.keyword.trim() === q.question.trim()) || null});
+  }
+  window._topicRows = rows;
+  window._intentLabel = {buyer_intent: '买家意图', education: '需求教育', probe: '探测'};
+  const dim = window._topicDim || '全部';
+  const kw = (window._topicSearch || '').trim().toLowerCase();
+  window._topicRowsView = rows.filter(r =>
+    (dim === '全部' || hasTagDim(r.q.tags, dim)) &&
+    (!kw || r.q.question.toLowerCase().includes(kw)));
+  document.getElementById('view').innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <div><h1 class="text-2xl font-bold">选题库</h1>
+      <p class="text-slate-500 text-sm mt-1">用户会问 AI 的问题统一在这里管理：打标签、启停监测、看 AI 提及表现，并可直接生成文章</p></div>
+      <div class="flex gap-2 items-center">
+        <button onclick="mqModal()" class="bg-vip-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-vip-700">+ 添加问题</button>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      ${['全部', ...MQ_TAGS].map(t => `<button onclick="setTopicDim('${t}')" class="text-xs px-3 py-1.5 rounded-full ${dim === t ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:text-vip-600 hover:border-vip-300'}">${t}</button>`).join('')}
+      <input id="topic-search" value="${esc(window._topicSearch || '')}" oninput="topicSearch(this.value)" placeholder="搜索问题" class="flex-1 min-w-[200px] max-w-xs text-sm border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-vip-200">
+      <span class="text-xs text-slate-400"><b id="topic-count">${window._topicRowsView.length}</b> / ${rows.length} 个问题</span>
+    </div>
+    <div id="topic-batchbar"></div>
+    <div id="topic-list" class="bg-white rounded-2xl shadow-sm divide-y divide-slate-100"></div>`;
+  renderTopicRows();
+}
+function topicRefilter() {
+  const dim = window._topicDim || '全部';
+  const kw = (window._topicSearch || '').trim().toLowerCase();
+  window._topicRowsView = (window._topicRows || []).filter(r =>
+    (dim === '全部' || hasTagDim(r.q.tags, dim)) &&
+    (!kw || r.q.question.toLowerCase().includes(kw)));
+}
+function topicSearch(v) {
+  window._topicSearch = v;
+  topicRefilter();
+  renderTopicRows();
+  const el = document.getElementById('topic-search');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+function setTopicDim(t) { window._topicDim = t; topicRefilter(); renderTopicRows(); }
+function renderTopicRows() {
+  const el = document.getElementById('topic-list');
+  if (!el) return;
+  const dim = window._topicDim || '全部';
+  const cnt = document.getElementById('topic-count');
+  if (cnt) cnt.textContent = (window._topicRowsView || []).length;
+  const COLS = 'display:grid;grid-template-columns:34px minmax(0,1fr) 68px 84px 92px 88px 84px 116px;align-items:center;gap:12px';
+  const sel = window._topicSel || new Set();
+  const view = window._topicRowsView || [];
+  const allOn = view.length && view.every(r => sel.has(r.q.id));
+  const someOn = view.some(r => sel.has(r.q.id));
+  const h = l => `<div class="text-xs text-slate-400 font-medium">${l}</div>`;
+  el.innerHTML = `
+    <div class="px-4 py-2.5 bg-slate-50/80 border-b border-slate-100" style="${COLS}">
+      <input type="checkbox" ${allOn ? 'checked' : ''} ${someOn && !allOn ? 'data-ind="1"' : ''} class="w-4 h-4 accent-vip-600" onchange="topicSelAll(this.checked)">
+      <div class="text-xs text-slate-400 font-medium">问题</div>
+      ${h('排名')}${h('提及率')}${h('前三提及率')}${h('回答记录')}${h('启用状态')}<div class="text-xs text-slate-400 font-medium" style="justify-self:end">内容生产</div>
+    </div>
+      ${view.map((r, i) => { const {q, mon, topic} = r; return `
+      <div class="px-4 py-3 hover:bg-slate-50 ${sel.has(q.id) ? 'bg-vip-50/40' : ''}" style="${COLS}">
+        <input type="checkbox" class="w-4 h-4 accent-vip-600" ${sel.has(q.id) ? 'checked' : ''} onchange="topicRowSel(${q.id}, this.checked)">
+        <div class="min-w-0">
+          <div class="font-medium text-sm truncate">${esc(q.question)}
+            ${topic && topic.status === 'used' ? '<span class="ml-1.5 text-[11px] px-1.5 py-px rounded bg-slate-100/70 text-slate-400">已生成</span>' : ''}</div>
+          <div class="mt-1 flex items-center gap-1 flex-wrap">${tagChips(q.tags)}</div>
+        </div>
+        ${mon ? `
+        <div class="text-xs whitespace-nowrap">${mon.cur.row.avg_rank != null ? '<b>#' + mon.cur.row.avg_rank + '</b>' : '—'}${rankTrendChip(mon.cur.row.avg_rank, mon.prev && mon.prev.row.avg_rank)}</div>
+        <div class="text-xs whitespace-nowrap">${mon.cur.row.mention_rate != null ? '<b>' + mon.cur.row.mention_rate + '%</b>' : '—'}${trendChip(mon.cur.row.mention_rate, mon.prev && mon.prev.row.mention_rate)}</div>
+        <div class="text-xs whitespace-nowrap">${mon.cur.t3 != null ? '<b>' + mon.cur.t3 + '%</b>' : '—'}${trendChip(mon.cur.t3, mon.prev && mon.prev.t3)}</div>` : `
+        <div class="text-xs text-slate-300">—</div><div class="text-xs text-slate-300">—</div><div class="text-xs text-slate-300">—</div>`}
+        <div class="text-xs">${mon ? `<button onclick="gotoRowAnswers(${i})" class="text-vip-600 hover:bg-vip-50 px-2 py-1 rounded whitespace-nowrap">回答记录</button>` : '<span class="text-slate-300">—</span>'}</div>
+        <div><button onclick="toggleRowMon(${i})" role="switch" aria-checked="${q.active}" title="${q.active ? '监测中，点击停用' : '已停用，点击开启监测'}" class="mon-switch relative w-9 h-5 rounded-full transition-colors cursor-pointer hover:opacity-80 ${q.active ? 'bg-emerald-500' : 'bg-slate-200'}">
+          <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${q.active ? 'translate-x-4' : ''}"></span>
+        </button></div>
+        <div class="flex justify-end gap-1.5">
+          <button onclick="genFromRow(${i})" class="text-xs shrink-0 text-vip-600 hover:bg-vip-50 px-2.5 py-1.5 rounded">去生成</button>
+          <button onclick="delRowMon(${i})" class="text-xs shrink-0 text-rose-500 hover:bg-rose-50 px-2 py-1.5 rounded">删除</button>
+        </div>
+      </div>`; }).join('')}
+      ${(!(window._topicRowsView || []).length) ? '<div class="p-10 text-center text-slate-400 text-sm">没有符合条件的问题</div>' : ''}`;
+  /* 全选框半选态 */
+  const headCb = el.querySelector('input[data-ind]');
+  if (headCb) headCb.indeterminate = true;
+  renderTopicBatchbar();
+}
+/* ---- 问题勾选与批量操作 ---- */
+function topicRowSel(qid, on) {
+  if (!window._topicSel) window._topicSel = new Set();
+  on ? window._topicSel.add(qid) : window._topicSel.delete(qid);
+  renderTopicRows();
+}
+function topicSelAll(on) {
+  if (!window._topicSel) window._topicSel = new Set();
+  (window._topicRowsView || []).forEach(r => on ? window._topicSel.add(r.q.id) : window._topicSel.delete(r.q.id));
+  renderTopicRows();
+}
+function topicSelClear() { window._topicSel = new Set(); renderTopicRows(); }
+function renderTopicBatchbar() {
+  const el = document.getElementById('topic-batchbar');
+  if (!el) return;
+  const sel = window._topicSel || new Set();
+  if (!sel.size) { el.innerHTML = ''; return; }
+  const viewN = (window._topicRowsView || []).length;
+  el.innerHTML = `
+    <div class="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl bg-vip-50 border border-vip-100 text-sm">
+      <b class="text-vip-700">已选 ${sel.size} 个问题</b>
+      <button onclick="topicSelAll(true)" class="text-xs text-vip-600 hover:underline whitespace-nowrap">全选当前范围（${viewN}）</button>
+      <button onclick="topicSelClear()" class="text-xs text-slate-400 hover:text-rose-500 whitespace-nowrap">清空选择</button>
+      <button onclick="topicsRunModal()" class="ml-auto bg-vip-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-vip-700 whitespace-nowrap">▶ 发起采样</button>
+    </div>`;
+}
+function rowAt(i) { return (window._topicRowsView || [])[i]; }
+async function toggleRowMon(i) {
+  const r = rowAt(i); if (!r) return;
+  await API(`/monitor/queries/${r.q.id}`, {method: 'PATCH'});
+  toast(r.q.active ? '已停用监测' : '已启用监测');
+  viewTopics();
+}
+async function delRowMon(i) {
+  const r = rowAt(i); if (!r || !confirm('删除该问题及其监测表现？')) return;
+  await API(`/monitor/queries/${r.q.id}`, {method: 'DELETE'});
+  viewTopics();
+}
+function gotoRowAnswers(i) {
+  const r = rowAt(i); if (!r) return;
+  _ansState = {engine: '全部', verdict: '全部', question: r.q.question};
+  location.hash = '#/answers';
+}
+async function genFromRow(i) {
+  const r = rowAt(i); if (!r) return;
+  location.hash = '#/factory';
+  factoryWizard(r.q.id);
+}
+
+async function topicModal() {
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-4">添加选题</div>
+      <input id="t-keyword" placeholder="用户会问 AI 的问题，如：企业协作软件怎么选" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+      <div class="grid grid-cols-3 gap-3 mt-3 text-sm">
+        <div><label class="text-slate-600 text-xs">意图</label>
+          <select id="t-intent" class="w-full mt-1 border border-slate-300 rounded-lg px-2 py-2">
+            <option value="buyer_intent">买家意图</option><option value="education" selected>需求教育</option><option value="probe">探测</option></select></div>
+        <div><label class="text-slate-600 text-xs">维度</label>
+          <select id="t-dim" class="w-full mt-1 border border-slate-300 rounded-lg px-2 py-2">
+            ${['语义泛化','使用场景','商业意图','推荐榜单','评测对比','品牌词','问答长尾','技术方案'].map(d => `<option>${d}</option>`).join('')}</select></div>
+        <div><label class="text-slate-600 text-xs">市场</label>
+          <select id="t-market" class="w-full mt-1 border border-slate-300 rounded-lg px-2 py-2">
+            <option value="cn">中文</option><option value="global">海外</option></select></div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700">取消</button>
+        <button onclick="saveTopic()" class="px-4 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">保存</button>
+      </div>
+    </div>`);
+}
+async function saveTopic() {
+  const kw = v('t-keyword'); if (!kw) return toast('请填写选题', 'err');
+  await API('/topics', {method: 'POST', body: {brand_id: selBrandVal(), keyword: kw,
+    intent: document.getElementById('t-intent').value, dimension: document.getElementById('t-dim').value,
+    market: document.getElementById('t-market').value}});
+  closeModal(); viewTopics();
+}
+async function delTopic(id) { if (!confirm('删除该选题？')) return; await API(`/topics/${id}`, {method: 'DELETE'}); viewTopics(); }
+
+/* AI 拓词功能已下线（入口与弹窗移除，后端 /topics/expand 接口暂保留便于恢复） */
+
+/* ================= 内容工厂 ================= */
+let facFilter = { status: '', q: '' };
+
+async function viewFactory() {
+  const bid = platform ? platform.id : 0;
+  if (!bid) return emptyView('平台信息未加载，请刷新页面重试');
+  document.getElementById('view').innerHTML = `
+    <div class="flex items-center justify-between">
+      <div><h1 class="text-2xl font-bold">内容工厂</h1>
+      <p class="text-slate-500 text-sm mt-1">已产出内容与生产状态一览；AI 生成 / 本地上传 → 自动审稿 → 人工审核</p></div>
+      <button onclick="factoryCreateModal()" class="bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg shrink-0">＋ 生产内容</button>
+    </div>
+    <div id="fac-body"><div class="py-16 text-center text-slate-400 text-sm">加载中…</div></div>`;
+  await facReload();
+}
+
+async function facReload() {
+  let arts = [];
+  try { arts = await API(`/articles?brand_id=${selBrandVal()}`); } catch (e) {}
+  window._facArts = arts;
+  facRender();
+}
+
+function facSetStatus(k) { facFilter.status = k; facRender(); }
+function facSetQ(v) {
+  facFilter.q = v;
+  facRender();
+  const inp = document.getElementById('fac-q');
+  if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
+function facRender() {
+  const el = document.getElementById('fac-body');
+  if (!el) return;
+  const arts = window._facArts || [];
+  const f = facFilter;
+  const shown = arts.filter(a => (!f.status || a.status === f.status)
+    && (!f.q || (a.title || '').toLowerCase().includes(f.q.toLowerCase())));
+  const tabDefs = [['', '全部内容'], ['pending_review', '待审核'], ['approved', '已通过'], ['rejected', '已驳回']];
+  const cnt = k => k ? arts.filter(a => a.status === k).length : arts.length;
+  el.innerHTML = `
+    <div class="flex flex-wrap items-center gap-2 mt-4 mb-3">
+      ${tabDefs.map(([k, label]) => `
+        <button onclick="facSetStatus('${k}')" class="text-xs font-medium leading-[18px] px-3 py-1 rounded-lg ${f.status === k ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-vip-300 hover:text-vip-700'}">${label}<span class="ml-1 opacity-70">${cnt(k)}</span></button>`).join('')}
+      <div class="flex-1"></div>
+      <div class="relative">
+        <svg class="w-4 h-4 absolute left-2.5 top-2 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4.3-4.3"/></svg>
+        <input id="fac-q" value="${esc(f.q)}" oninput="facSetQ(this.value)" placeholder="搜索标题…"
+          class="w-56 border border-slate-200 rounded-lg pl-8 pr-3 py-1 text-xs font-medium leading-[18px] focus:outline-none focus:border-vip-300">
+      </div>
+    </div>
+    ${!arts.length ? facEmpty() : `
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-slate-400">
+          <th class="px-5 py-3 font-medium w-16">编号</th>
+          <th class="px-3 py-3 font-medium">标题</th>
+          <th class="px-3 py-3 font-medium w-24">来源</th>
+          <th class="px-3 py-3 font-medium w-32">目标模型</th>
+          <th class="px-3 py-3 font-medium w-24">模板</th>
+          <th class="px-3 py-3 font-medium w-24">状态</th>
+          <th class="px-3 py-3 font-medium w-28">生成时间</th>
+        </tr></thead>
+        <tbody>
+        ${shown.map(a => `
+          <tr onclick="openArticle(${a.id})" class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer">
+            <td class="px-5 py-3.5 text-slate-500">#${a.id}</td>
+            <td class="px-3 py-3.5"><div class="text-slate-700 font-medium truncate max-w-md">${esc(a.title)}</div></td>
+            <td class="px-3 py-3.5">${facSourceBadge(a.source)}</td>
+            <td class="px-3 py-3.5">${facModelIcons(a)}</td>
+            <td class="px-3 py-3.5 text-slate-500 whitespace-nowrap">${esc(a.template)}</td>
+            <td class="px-3 py-3.5">${statusBadge(a.status)}</td>
+            <td class="px-3 py-3.5 text-slate-500 text-xs whitespace-nowrap">${fmtDate(a.created_at)}</td>
+          </tr>`).join('')}
+        ${!shown.length ? '<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">没有符合条件的内容</td></tr>' : ''}
+        </tbody>
+      </table>
+    </div>`}`;
+}
+
+function facEmpty() {
+  return `
+    <div class="bg-white rounded-2xl shadow-sm p-12 text-center mt-2">
+      <div class="w-14 h-14 rounded-2xl bg-vip-50 text-vip-500 flex items-center justify-center mx-auto text-2xl">✦</div>
+      <div class="font-semibold mt-4 text-slate-700">还没有产出内容</div>
+      <div class="text-sm text-slate-400 mt-1.5">选择 AI 生成或本地上传，开始生产第一篇内容</div>
+      <button onclick="factoryCreateModal()" class="mt-5 bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg">＋ 生产内容</button>
+    </div>`;
+}
+
+function facSourceBadge(s) {
+  return s === 'upload'
+    ? '<span class="inline-flex items-center whitespace-nowrap text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-600">⬆ 本地上传</span>'
+    : '<span class="inline-flex items-center whitespace-nowrap text-xs px-2 py-0.5 rounded bg-vip-50 text-vip-600">✦ AI 生成</span>';
+}
+function facModelIcons(a) {
+  const ms = (a.gen_meta && a.gen_meta.models) || [];
+  if (!ms.length) return '<span class="text-slate-300 text-xs">—</span>';
+  return `<span class="flex items-center gap-1">${ms.map(m => monModelIcon(m)).join('')}</span>`;
+}
+
+function templateDesc(t) {
+  return { '对比选购': '核心结论前置 / 选购标准 / 逐项对比表 / 推荐 / FAQ',
+    '案例实证': '背景问题 / 方案 / 量化结果（须有证据）/ 复盘',
+    '风险避坑': '风险清单 / 判断标准 / 正确做法 / 一句话结论',
+    'FAQ问答': '是什么 / 怎么选 / 多少钱 / 注意什么（结论先行）',
+    '场景方案': '场景 / 痛点拆解 / 分步方案 / 能力清单 / 效果预期' }[t] || '';
+}
+
+/* ---- 生产方式选择：AI 生成 / 本地上传 ---- */
+function factoryCreateModal() {
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold">选择生产方式</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+      </div>
+      <div class="text-xs text-slate-400 mt-1 mb-5">两种方式产出的内容统一进入审核流程</div>
+      <div class="grid grid-cols-2 gap-4">
+        <button onclick="factoryWizard()" class="text-left border border-vip-100 bg-vip-50/40 hover:border-vip-400 rounded-2xl p-5 transition hover:shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-vip-600 text-white flex items-center justify-center text-lg">✦</div>
+          <div class="font-semibold mt-3 text-slate-800">AI 生成<span class="text-[10px] px-1.5 py-0.5 rounded bg-vip-600 text-white align-middle ml-1.5 font-normal">推荐</span></div>
+          <div class="text-xs text-slate-400 mt-1.5 leading-relaxed">选择目标模型与要优化的问题，按文体模板生成并自动审稿</div>
+        </button>
+        <button onclick="factoryUploadModal()" class="text-left border border-slate-200 hover:border-blue-300 rounded-2xl p-5 transition hover:shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center text-lg">⬆</div>
+          <div class="font-semibold mt-3 text-slate-800">本地上传</div>
+          <div class="text-xs text-slate-400 mt-1.5 leading-relaxed">粘贴已写好的文章直接入库，进入待审核状态</div>
+        </button>
+      </div>
+    </div>`, 'max-w-xl');
+}
+
+/* ---- 本地上传 ---- */
+function factoryUploadModal() {
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-lg font-bold">本地上传文章</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+      </div>
+      <label class="text-slate-600 text-sm font-medium">标题</label>
+      <input id="fu-title" placeholder="请输入文章标题" class="w-full mt-2 border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-vip-400">
+      <label class="text-slate-600 text-sm font-medium mt-4 block">正文</label>
+      <textarea id="fu-body" rows="12" placeholder="粘贴文章正文（至少 50 字）…" class="w-full mt-2 border border-slate-200 rounded-lg px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:border-vip-400"></textarea>
+      <div class="flex justify-end gap-2.5 mt-5">
+        <button onclick="closeModal()" class="px-5 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">取消</button>
+        <button onclick="fuSave()" id="fu-btn" class="bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-5 py-2 rounded-lg">上传并进入审核</button>
+      </div>
+    </div>`, 'max-w-2xl');
+}
+async function fuSave() {
+  const title = document.getElementById('fu-title').value.trim();
+  const body = document.getElementById('fu-body').value.trim();
+  if (title.length < 2) return toast('标题至少 2 个字符', 'err');
+  if (body.length < 50) return toast('正文至少 50 个字符', 'err');
+  const btn = document.getElementById('fu-btn');
+  btn.disabled = true; btn.textContent = '上传中…';
+  try {
+    await API('/articles/manual', {method: 'POST', body: {brand_id: selBrandVal(), title, body}});
+    toast('上传成功，已进入待审核'); closeModal(); facReload();
+  } catch (e) { toast(e.message, 'err'); btn.disabled = false; btn.textContent = '上传并进入审核'; }
+}
+
+/* ---- AI 生成向导：目标模型 + 问题 → 文体模板 → 生成 ---- */
+async function factoryWizard(presetQid, presetTopic) {
+  const bid = selBrandVal();
+  const rateMap = {};
+  const ana = await API(`/monitor/analysis?brand_id=${bid}`).catch(() => ({has_data: false}));
+  if (ana.has_data) (ana.queries || []).concat(ana.brand_awareness || [])
+    .forEach(r => { rateMap[r.id] = r.mention_rate; });
+  let qs = [];
+  try {
+    const raw = await API(`/monitor/queries?brand_id=${bid}`);
+    qs = raw.filter(q => q.active).map(q => ({qid: q.id, text: q.question, group: q.qgroup, rate: rateMap[q.id]}));
+  } catch (e) {}
+  let docs = [];
+  try { docs = await API(`/documents?brand_id=${bid}`); } catch (e) {}
+  window._fw = { step: 1, models: new Set(), qids: new Set(), qsearch: '', template: '对比选购',
+    qs, presetTopic: presetTopic || null, jobs: [], done: 0, ok: 0, fail: 0,
+    mode: 'template', docs, docsOpen: false, ref: null, refTab: 'link',
+    refUrl: '', refParsed: null, refTitle: '', refContent: '', refParsing: false };
+  if (presetQid) window._fw.qids.add(presetQid);
+  fwStep1();
+}
+
+function fwStep1() {
+  const w = window._fw; if (!w) return;
+  const shown = w.qs.filter(q => !w.qsearch || q.text.toLowerCase().includes(w.qsearch.toLowerCase()));
+  const nSel = w.qids.size + (w.presetTopic ? 1 : 0);
+  const valid = w.models.size >= 1 && nSel >= 1;
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold">AI 生成内容</h3>
+        <span class="text-[11px] px-2 py-0.5 rounded-full bg-vip-50 text-vip-600 font-medium">第 1 步 / 共 2 步</span>
+      </div>
+      <div class="text-slate-600 text-sm font-medium mt-5 mb-2.5">目标模型<span class="text-xs text-slate-400 font-normal ml-1.5">多选，将记入内容生成元数据</span></div>
+      <div class="flex flex-wrap gap-2 mb-5">
+        ${MON_MODELS.map(m => fwModelChip(m)).join('')}
+      </div>
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="text-slate-600 text-sm font-medium">优化的问题<span class="text-xs text-slate-400 font-normal ml-1.5">来自监测中心，带提及率标识</span></div>
+        <div class="flex items-center gap-2.5 text-xs text-slate-400">
+          已选 <b class="text-vip-700">${nSel}</b>/20
+          <button onclick="fwSelAllShown()" class="text-vip-600 hover:underline">全选当前范围</button>
+        </div>
+      </div>
+      <div class="relative">
+        <svg class="w-4 h-4 absolute left-2.5 top-2 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4.3-4.3"/></svg>
+        <input id="fw-q" value="${esc(w.qsearch)}" oninput="fwSetQsearch(this.value)" placeholder="搜索问题…"
+          class="w-full border border-slate-200 rounded-lg pl-8 pr-3 py-1 text-xs font-medium leading-[18px] focus:outline-none focus:border-vip-300">
+      </div>
+      <div class="border border-slate-200 rounded-xl max-h-60 overflow-y-auto divide-y divide-slate-100 mt-2.5">
+        ${w.presetTopic ? `
+          <div class="flex items-center gap-3 px-4 py-2.5 bg-vip-50/40">
+            <span class="w-4 h-4 rounded bg-vip-600 border border-vip-600 text-white text-[10px] flex items-center justify-center shrink-0">✓</span>
+            <span class="text-sm text-slate-700 truncate flex-1">${esc(w.presetTopic.keyword)}</span>
+            <span class="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">选题带入</span>
+          </div>` : ''}
+        ${shown.map(fwQRow).join('') || '<div class="py-8 text-center text-slate-400 text-sm">没有符合条件的问题</div>'}
+      </div>
+      <div class="flex justify-end gap-2.5 mt-5">
+        <button onclick="closeModal()" class="px-5 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">取消</button>
+        <button onclick="fwGoStep2()" ${valid ? '' : 'disabled'} class="bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-6 py-2 rounded-lg ${valid ? '' : 'opacity-40 cursor-not-allowed'}">下一步</button>
+      </div>
+    </div>`, 'max-w-2xl');
+  const inp = document.getElementById('fw-q');
+  if (inp && w.qsearch) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
+function fwModelChip(m) {
+  const on = window._fw.models.has(m);
+  const [bg, txt] = MON_MODEL_ICON[m] || ['#94a3b8', m[0]];
+  return `<button onclick="fwToggleModel('${m}')" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[13px] transition ${on ? 'border-vip-400 bg-vip-50 text-vip-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-vip-300'}">
+    <span class="inline-flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold text-white" style="background:${bg}">${txt}</span>${m}${on ? '<span class="text-vip-500">✓</span>' : ''}</button>`;
+}
+function fwToggleModel(m) { const s = window._fw.models; s.has(m) ? s.delete(m) : s.add(m); fwStep1(); }
+
+function fwQRow(q) {
+  const on = window._fw.qids.has(q.qid);
+  return `<button onclick="fwToggleQid(${q.qid})" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left">
+    <span class="w-4 h-4 rounded border flex items-center justify-center shrink-0 text-[10px] ${on ? 'bg-vip-600 border-vip-600 text-white' : 'border-slate-300'}">${on ? '✓' : ''}</span>
+    <span class="text-sm text-slate-700 truncate flex-1">${esc(q.text)}</span>
+    ${q.group ? `<span class="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">${esc(q.group)}</span>` : ''}
+    ${fwRateBadge(q.rate)}
+  </button>`;
+}
+function fwRateBadge(rate) {
+  if (rate == null) return '<span class="text-[11px] text-slate-300 shrink-0">暂无提及率</span>';
+  const low = rate < 40;
+  return `<span class="text-xs px-1.5 py-0.5 rounded shrink-0 ${low ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}">提及率 ${rate}%</span>`;
+}
+function fwToggleQid(qid) {
+  const w = window._fw;
+  if (!w.qids.has(qid)) {
+    if (w.qids.size >= 20) return toast('最多选择 20 个问题', 'err');
+    w.qids.add(qid);
+  } else w.qids.delete(qid);
+  fwStep1();
+}
+function fwSetQsearch(v) { window._fw.qsearch = v; fwStep1(); }
+function fwSelAllShown() {
+  const w = window._fw;
+  const shown = w.qs.filter(q => !w.qsearch || q.text.toLowerCase().includes(w.qsearch.toLowerCase()));
+  for (const q of shown) {
+    if (w.qids.size >= 20) break;
+    w.qids.add(q.qid);
+  }
+  fwStep1();
+}
+function fwGoStep2() { window._fw.step = 2; fwStep2(); }
+
+function fwStep2() {
+  const w = window._fw; if (!w) return;
+  const n = w.qids.size + (w.presetTopic ? 1 : 0);
+  const imitate = w.mode === 'imitate';
+  const canRun = imitate ? !!w.ref : true;
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold">AI 生成内容</h3>
+        <span class="text-[11px] px-2 py-0.5 rounded-full bg-vip-50 text-vip-600 font-medium">第 2 步 / 共 2 步</span>
+      </div>
+      <div class="flex items-center gap-2 mt-4 text-sm text-slate-600">
+        <span class="font-medium">将生成</span><b class="text-vip-700">${n} 篇</b>
+        <span class="text-slate-400">·</span>
+        <span class="flex items-center gap-1">${[...w.models].map(m => monModelIcon(m)).join('')}</span>
+        <button onclick="fwStep1()" class="text-xs text-vip-600 hover:underline ml-1">修改</button>
+      </div>
+      <div class="flex items-center gap-2 mt-5 mb-3">
+        <button onclick="fwSetMode('template')" class="text-xs font-medium leading-[18px] px-3 py-1 rounded-lg ${!imitate ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-vip-300'}">模板化生产</button>
+        <button onclick="fwSetMode('imitate')" class="text-xs font-medium leading-[18px] px-3 py-1 rounded-lg ${imitate ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-vip-300'}">仿写高引用范文</button>
+        <span class="text-xs text-slate-400">${imitate ? '提炼范文核心结构，按其骨架生成' : '按文体模板的结构与章节生成'}</span>
+      </div>
+      ${imitate ? fwRefSection() : `
+      <div class="text-slate-600 text-sm font-medium mb-2.5">文体模板</div>
+      <div class="grid grid-cols-3 gap-3">
+        ${templates.map(t => `
+          <button onclick="fwPickTemplate('${t}')" class="relative text-left rounded-xl border p-4 transition ${w.template === t ? 'border-vip-400 bg-vip-50/60' : 'border-slate-200 hover:border-vip-300'}">
+            ${w.template === t ? '<span class="absolute top-3 right-3 text-vip-600 text-xs">✓ 已选</span>' : ''}
+            <div class="font-semibold text-sm text-slate-700">${t}</div>
+            <div class="text-xs text-slate-400 mt-1.5 leading-relaxed">${templateDesc(t)}</div>
+          </button>`).join('')}
+      </div>`}
+      <div class="flex justify-end gap-2.5 mt-6">
+        <button onclick="fwStep1()" class="px-5 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">上一步</button>
+        <button onclick="fwStart()" ${canRun ? '' : 'disabled'} class="bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-6 py-2 rounded-lg ${canRun ? '' : 'opacity-40 cursor-not-allowed'}">✦ 开始生成（${n} 篇）</button>
+      </div>
+    </div>`, 'max-w-2xl');
+}
+function fwPickTemplate(t) { window._fw.template = t; fwStep2(); }
+
+/* ---- 范文仿写：参考范文选择（知识库 / 链接 / 粘贴） ---- */
+function fwSetMode(m) { window._fw.mode = m; fwStep2(); }
+function fwToggleDocsOpen() { window._fw.docsOpen = !window._fw.docsOpen; fwStep2(); }
+function fwSetRefTab(t) { window._fw.refTab = t; fwStep2(); }
+function fwClearRef() { const w = window._fw; w.ref = null; w.refParsed = null; fwStep2(); }
+
+function fwRefSection() {
+  const w = window._fw;
+  const SRC_LABEL = {paste: '粘贴', upload: '上传', url: '网页导入', seed: '种子', knowledge_card: '知识卡'};
+  const shown = w.docsOpen ? w.docs : w.docs.slice(0, 6);
+  const ref = w.ref;
+  return `
+    <div class="text-slate-600 text-sm font-medium mb-2.5">选择参考范文<span class="text-xs text-slate-400 font-normal ml-1.5">系统将提炼范文核心结构，生成高质量文章</span></div>
+    ${ref ? `
+    <div class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-vip-50 border border-vip-100 mb-3">
+      <span class="text-xs px-1.5 py-0.5 rounded bg-vip-600 text-white shrink-0">仿写对象</span>
+      <span class="text-sm text-slate-700 truncate flex-1">${esc(ref.title)}</span>
+      <button onclick="fwClearRef()" class="text-xs text-slate-400 hover:text-rose-500 shrink-0">取消</button>
+    </div>` : ''}
+    <div class="border border-slate-200 rounded-xl max-h-52 overflow-y-auto divide-y divide-slate-100">
+      ${shown.map((d, i) => `
+        <button onclick="fwPickDoc(${d.id})" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left ${ref && ref.docId === d.id ? 'bg-vip-50/60' : ''}">
+          <span class="text-xs text-slate-300 w-5 text-right shrink-0">${i + 1}</span>
+          <span class="text-sm text-slate-700 truncate flex-1">${esc(d.title)}</span>
+          <span class="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">${SRC_LABEL[d.source] || d.source || '知识库'}</span>
+          <span class="text-[11px] text-slate-300 shrink-0 whitespace-nowrap">${d.content_len ? (d.content_len / 1000).toFixed(1) + 'k 字' : ''}</span>
+        </button>`).join('') || '<div class="py-8 text-center text-slate-400 text-sm">知识库暂无文档，可在下方手动指定范文</div>'}
+    </div>
+    ${w.docs.length > 6 ? `<button onclick="fwToggleDocsOpen()" class="mt-2 mx-auto block text-xs text-slate-400 hover:text-vip-600">${w.docsOpen ? '收起' : `展开更多（${w.docs.length - 6}）`}</button>` : ''}
+    <div class="text-slate-600 text-sm font-medium mt-4 mb-2">手动指定参考范文</div>
+    <div class="flex gap-2 mb-2.5">
+      <button onclick="fwSetRefTab('link')" class="text-xs font-medium leading-[18px] px-3 py-1 rounded-lg ${w.refTab === 'link' ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-vip-300'}">手动指定链接</button>
+      <button onclick="fwSetRefTab('paste')" class="text-xs font-medium leading-[18px] px-3 py-1 rounded-lg ${w.refTab === 'paste' ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-vip-300'}">手动指定内容</button>
+    </div>
+    ${w.refTab === 'link' ? `
+      <div class="flex gap-2">
+        <input value="${esc(w.refUrl)}" oninput="window._fw.refUrl = this.value" placeholder="范文链接 https://..."
+          class="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-vip-300">
+        <button onclick="fwParseRefUrl()" ${w.refParsing ? 'disabled' : ''} class="shrink-0 border border-vip-300 text-vip-600 hover:bg-vip-50 text-[13px] font-medium px-3.5 py-1.5 rounded-lg whitespace-nowrap ${w.refParsing ? 'opacity-50' : ''}">${w.refParsing ? '解析中…' : '解析范文'}</button>
+      </div>
+      ${w.refParsed ? `
+      <div class="mt-2.5 border border-slate-200 rounded-xl p-3.5 bg-slate-50/60">
+        <div class="text-sm font-medium text-slate-700 truncate">${esc(w.refParsed.title)}</div>
+        <div class="text-xs text-slate-400 mt-1 leading-relaxed">${esc(w.refParsed.text.slice(0, 160))}…</div>
+        <button onclick="fwUseParsedRef()" class="mt-2.5 text-xs bg-vip-600 text-white px-3.5 py-1.5 rounded-lg hover:bg-vip-700">采用该范文</button>
+      </div>` : ''}` : `
+      <input value="${esc(w.refTitle)}" oninput="window._fw.refTitle = this.value" placeholder="范文标题（可选，留空自动命名）"
+        class="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] mb-2 focus:outline-none focus:border-vip-300">
+      <textarea rows="4" oninput="window._fw.refContent = this.value" placeholder="粘贴范文正文…"
+        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:border-vip-300">${esc(w.refContent)}</textarea>
+      <button onclick="fwUsePastedRef()" class="mt-2 text-xs bg-vip-600 text-white px-3.5 py-1.5 rounded-lg hover:bg-vip-700">采用该范文</button>`}`;
+}
+
+async function fwPickDoc(id) {
+  try {
+    const d = await API(`/documents/${id}`);
+    window._fw.ref = {source: 'doc', docId: id, title: d.title, body: d.content};
+  } catch (e) { toast(e.message, 'err'); }
+  fwStep2();
+}
+async function fwParseRefUrl() {
+  const w = window._fw;
+  const url = (w.refUrl || '').trim();
+  if (!url) return toast('请输入范文链接', 'err');
+  w.refParsing = true; fwStep2();
+  try {
+    const r = await API('/articles/reference/parse', {method: 'POST', body: {url}});
+    w.refParsed = {title: r.title, text: r.text};
+  } catch (e) { toast(e.message, 'err'); }
+  w.refParsing = false; fwStep2();
+}
+function fwUseParsedRef() {
+  const w = window._fw;
+  if (!w.refParsed) return;
+  w.ref = {source: 'url', title: w.refParsed.title, body: w.refParsed.text};
+  fwStep2();
+}
+function fwUsePastedRef() {
+  const w = window._fw;
+  const body = (w.refContent || '').trim();
+  if (body.length < 50) return toast('范文正文至少 50 字', 'err');
+  w.ref = {source: 'paste', title: (w.refTitle || '').trim() || '（手动指定范文）', body};
+  fwStep2();
+}
+
+async function fwStart() {
+  const w = window._fw;
+  const items = w.qs.filter(q => w.qids.has(q.qid)).map(q => ({text: q.text, topicId: null, state: 'wait'}));
+  if (w.presetTopic) items.unshift({text: w.presetTopic.keyword, topicId: w.presetTopic.id, state: 'wait'});
+  w.jobs = items; w.done = 0; w.ok = 0; w.fail = 0; w.step = 3;
+  fwRenderProgress();
+  for (const job of items) {
+    job.state = 'run'; fwRenderProgress();
+    try {
+      let topicId = job.topicId;
+      if (!topicId) {
+        const list = await API(`/topics?brand_id=${selBrandVal()}`).catch(() => []);
+        let t = list.find(x => x.keyword.trim() === job.text.trim());
+        if (!t) t = await API('/topics', {method: 'POST', body: {brand_id: selBrandVal(), keyword: job.text,
+          intent: 'buyer_intent', dimension: '问答长尾', market: 'cn'}});
+        topicId = t.id;
+      }
+      const payload = {brand_id: selBrandVal(), topic_id: topicId, template: w.template, models: [...w.models]};
+      if (w.mode === 'imitate' && w.ref) {
+        if (w.ref.docId) payload.ref_doc_id = w.ref.docId;
+        else { payload.ref_title = w.ref.title || ''; payload.ref_body = w.ref.body || ''; }
+      }
+      await API('/articles/generate', {method: 'POST', body: payload});
+      job.state = 'ok'; w.ok++;
+    } catch (e) { job.state = 'err'; job.error = e.message; w.fail++; }
+    w.done++;
+    fwRenderProgress();
+  }
+  fwRenderProgress();
+  facReload();
+}
+
+function fwRenderProgress() {
+  const w = window._fw; if (!w || !w.jobs.length) return;
+  const total = w.jobs.length, done = w.done;
+  const running = done < total;
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-vip-50 text-vip-600 flex items-center justify-center text-lg shrink-0">✦</div>
+        <div><div class="font-bold">${running ? '正在生成内容…' : '生成完成'}</div>
+        <div class="text-xs text-slate-400 mt-0.5">${esc(w.mode === 'imitate' && w.ref ? '范文仿写 · ' + w.ref.title : w.template)} · ${w.models.size} 个目标模型 · 已完成 ${done}/${total}</div></div>
+      </div>
+      <div class="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-vip-500 rounded-full transition-all" style="width:${Math.round(100 * done / total)}%"></div></div>
+      <div class="mt-4 border border-slate-200 rounded-xl max-h-60 overflow-y-auto divide-y divide-slate-100">
+        ${w.jobs.map(j => `
+          <div class="flex items-center gap-3 px-4 py-2.5">
+            ${j.state === 'run' ? '<span class="w-4 h-4 border-2 border-vip-200 border-t-vip-600 rounded-full animate-spin shrink-0"></span>'
+              : j.state === 'ok' ? '<span class="text-emerald-500 shrink-0">✓</span>'
+              : j.state === 'err' ? '<span class="text-rose-500 shrink-0">✕</span>'
+              : '<span class="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0"></span>'}
+            <span class="text-sm text-slate-600 truncate flex-1">${esc(j.text)}</span>
+            ${j.state === 'ok' ? '<span class="text-xs text-emerald-600 shrink-0">已生成</span>'
+              : j.state === 'err' ? '<span class="text-xs text-rose-400 shrink-0" title="' + esc(j.error || '') + '">失败</span>'
+              : j.state === 'run' ? '<span class="text-xs text-vip-500 shrink-0">生成中…</span>'
+              : '<span class="text-xs text-slate-300 shrink-0">等待中</span>'}
+          </div>`).join('')}
+      </div>
+      ${running ? '' : `
+      <div class="flex items-center justify-between mt-5">
+        <div class="text-xs ${w.fail ? 'text-rose-500' : 'text-slate-400'}">${w.fail ? `${w.fail} 篇生成失败，可重新发起生成` : '全部生成成功，已进入待审核'}</div>
+        <button onclick="closeModal()" class="bg-vip-600 hover:bg-vip-700 text-white text-sm font-medium px-6 py-2 rounded-lg">完成</button>
+      </div>`}
+    </div>`, 'max-w-xl');
+}
+
+async function genFromTopic(topicId) {
+  location.hash = '#/factory';
+  const list = await API(`/topics?brand_id=${selBrandVal()}`).catch(() => []);
+  const t = (list || []).find(x => x.id === topicId);
+  if (t) factoryWizard(null, {id: t.id, keyword: t.keyword});
+  else factoryWizard();
+}
+
+
+/* ================= 内容详情与审核操作（弹窗，挂在内容工厂列表行） ================= */
+function statusBadge(s) {
+  const m = {pending_review: ['待审核', 'bg-amber-50 text-amber-700'], approved: ['已通过', 'bg-sky-50 text-sky-700'],
+    published: ['已发布', 'bg-emerald-50 text-emerald-700'], rejected: ['已驳回', 'bg-rose-50 text-rose-600'], draft: ['草稿', 'bg-slate-100 text-slate-500']};
+  const [l, c] = m[s] || [s, 'bg-slate-100 text-slate-500'];
+  return `<span class="text-xs px-2 py-0.5 rounded font-medium ${c}">${l}</span>`;
+}
+function verdictLabel(ai) {
+  const m = {pass: '✅ 直接发', revise: '✏️ 局部改', human: '👤 要人看', skipped: '— 未启用'};
+  return m[ai.verdict] || ai.verdict;
+}
+
+const facRefreshIfActive = () => { if (location.hash.includes('factory')) facReload(); };
+
+async function openArticle(id) {
+  const a = await API(`/articles/${id}`);
+  openModal(`
+    <div class="flex items-start justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-xl z-10">
+      <div class="pr-4">
+        <div class="font-bold text-lg leading-snug">${esc(a.title)}</div>
+        <div class="text-xs text-slate-400 mt-1.5 flex items-center gap-2">
+          ${statusBadge(a.status)}<span>${esc(a.template)}</span>
+          ${a.score != null ? `<span class="font-semibold ${a.score >= 80 ? 'text-emerald-600' : 'text-amber-600'}">${a.score} 分</span>` : ''}
+          ${a.ai_review && a.ai_review.verdict ? `<span>AI审稿：${verdictLabel(a.ai_review)}</span>` : ''}
+        </div>
+      </div>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">✕</button>
+    </div>
+    <div class="grid grid-cols-3 gap-0">
+      <div class="col-span-2 p-5 border-r border-slate-100 max-h-[65vh] overflow-y-auto">
+        <div class="markdown text-sm">${marked.parse(a.body)}</div>
+      </div>
+      <div class="p-5 max-h-[65vh] overflow-y-auto text-sm">
+        <div class="font-semibold mb-2 card-title">规则核查</div>
+        ${(a.rule_issues || []).length ? a.rule_issues.map(i => `
+          <div class="bg-rose-50 text-rose-700 rounded-lg p-2.5 text-xs mb-1.5"><b>${esc(i.type)}</b>：${esc(i.detail)}</div>`).join('')
+          : '<div class="text-emerald-600 text-xs bg-emerald-50 rounded-lg p-2.5">规则全部通过</div>'}
+        <div class="font-semibold mt-4 mb-2">AI 审稿</div>
+        <div class="bg-slate-50 rounded-lg p-2.5 text-xs leading-relaxed">
+          ${a.ai_review && a.ai_review.comment ? esc(a.ai_review.comment) : '（未启用或未审稿）'}
+          ${(a.ai_review && a.ai_review.issues || []).map(i => `<div class="mt-1.5 text-amber-700">• ${esc(i.type)}：${esc(i.detail)}</div>`).join('')}
+        </div>
+        <div class="font-semibold mt-4 mb-2">证据（知识库）</div>
+        <div class="bg-slate-50 rounded-lg p-2.5 text-xs text-slate-500 max-h-40 overflow-y-auto whitespace-pre-wrap">${a.evidence ? esc(a.evidence).slice(0, 800) : '（无）'}</div>
+        <div class="flex flex-col gap-2 mt-5">
+          ${a.status === 'pending_review' ? `
+            <button onclick="actArticle(${a.id},'approve')" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-emerald-700">✓ 通过审核</button>
+            <button onclick="actArticle(${a.id},'reject')" class="bg-white border border-rose-200 text-rose-600 text-sm px-4 py-2 rounded-lg hover:bg-rose-50">✕ 驳回</button>` : ''}
+          ${a.status === 'published' ? `<div class="text-xs text-slate-400">渠道：${esc(a.publish_channel)} · ${a.published_url ? `<a href="${esc(a.published_url)}" target="_blank" class="text-vip-500 underline">${esc(a.published_url)}</a>` : ''}</div>` : ''}
+          <button onclick="rerunReview(${a.id})" class="bg-white border border-slate-300 text-slate-600 text-sm px-4 py-2 rounded-lg hover:bg-slate-50">↻ 重新审稿</button>
+          <button onclick="editArticle(${a.id})" class="bg-white border border-slate-300 text-slate-600 text-sm px-4 py-2 rounded-lg hover:bg-slate-50">✎ 编辑内容</button>
+          <button onclick="delArticle(${a.id})" class="text-rose-400 text-xs hover:text-rose-600 text-left py-1">删除该内容</button>
+        </div>
+      </div>
+    </div>`, 'max-w-5xl');
+}
+async function actArticle(id, action) {
+  await API(`/articles/${id}/${action}`, {method: 'POST'});
+  toast(action === 'approve' ? '已通过' : '已驳回'); openArticle(id); facRefreshIfActive();
+}
+async function rerunReview(id) {
+  toast('审稿中…', 'info');
+  await API(`/articles/${id}/review`, {method: 'POST'});
+  toast('审稿完成'); openArticle(id); facRefreshIfActive();
+}
+async function delArticle(id) {
+  if (!confirm('删除该内容？')) return;
+  await API(`/articles/${id}`, {method: 'DELETE'}); closeModal(); facRefreshIfActive();
+}
+async function editArticle(id) {
+  const a = await API(`/articles/${id}`);
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-3">编辑内容</div>
+      <input id="ea-title" value="${esc(a.title)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+      <textarea id="ea-body" rows="16" class="w-full mt-3 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-vip-200">${esc(a.body)}</textarea>
+      <div class="flex justify-end gap-2 mt-4">
+        <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700">取消</button>
+        <button onclick="saveArticle(${id})" class="px-4 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">保存</button>
+      </div>
+    </div>`, 'max-w-3xl');
+}
+async function saveArticle(id) {
+  await API(`/articles/${id}`, {method: 'PATCH', body: {title: v('ea-title'), body: document.getElementById('ea-body').value}});
+  closeModal(); toast('已保存'); openArticle(id); facRefreshIfActive();
+}
+/* ================= 设置模块已移除（平台信息内置、AI 供应商与渠道由后端/环境变量管理） ================= */
+
+/* ================= 监测中心 ================= */
+let pollTimer = null;
+const MQ_GROUPS = ['推荐', '比较', '替代', '价格', '风险', '品牌验证', '场景'];
+/* 问题八大标签体系（用户口径：决策机制/关注点/人群/品类/品牌/场景/约束，第八个可按需扩展） */
+const MQ_TAGS = ['决策机制', '关注点', '人群', '品类', '品牌', '场景', '约束'];
+/* 标签结构：{维度: 值}（真实词包口径），兼容旧的字符串数组 */
+const tagPairs = tags => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags.map(t => [null, t]);
+  return Object.entries(tags).filter(([, v]) => v && String(v).trim());
+};
+const hasTagDim = (tags, dim) => Array.isArray(tags) ? (tags || []).includes(dim) : !!(tags || {})[dim];
+/* 紧凑中性徽章：浅灰底 + 维度名弱化，与全局 slate 风格协调 */
+const tagChips = tags => tagPairs(tags).map(([k, v]) =>
+  `<span class="text-[11px] leading-4 px-1.5 py-px rounded bg-slate-100/70 text-slate-500 whitespace-nowrap">${k ? `<span class="text-slate-400">${esc(k)}·</span>` : ''}${esc(v)}</span>`).join('');
+/* 趋势徽章：rankTrendChip 排名（数值变小=向好），trendChip 普通指标（数值变大=向好） */
+const rankTrendChip = (cur, prev) => {
+  if (cur == null || prev == null || cur === prev) return '';
+  const diff = Math.round(prev - cur), up = diff > 0;
+  return `<span class="ml-0.5 text-[11px] font-normal ${up ? 'text-emerald-500' : 'text-rose-400'}" title="上期 #${prev} → 本期 #${cur}">${up ? '↑' : '↓'}${Math.abs(diff)}</span>`;
+};
+const trendChip = (cur, prev) => {
+  if (cur == null || prev == null || cur === prev) return '';
+  const diff = Math.round(cur - prev), up = diff > 0;
+  return `<span class="ml-0.5 text-[11px] font-normal ${up ? 'text-emerald-500' : 'text-rose-400'}" title="上期 ${prev}% → 本期 ${cur}%">${up ? '↑' : '↓'}${Math.abs(diff)}pt</span>`;
+};
+let monQTag = '全部';
+const GROUP_STYLE = {
+  '推荐': 'bg-vip-50 text-vip-600', '比较': 'bg-sky-50 text-sky-600', '替代': 'bg-violet-50 text-violet-600',
+  '价格': 'bg-amber-50 text-amber-600', '风险': 'bg-rose-50 text-rose-600',
+  '品牌验证': 'bg-slate-100 text-slate-600', '场景': 'bg-emerald-50 text-emerald-600',
+};
+
+/* ---- 监测中心：筛选驱动的统一分析视图（问题 × 时间 × 模型） ---- */
+const MON_TIMES = [['today', '今天'], ['yesterday', '昨天'], ['7', '近一周'], ['14', '近两周'], ['30', '近30天'], ['90', '近90天'], ['all', '全部']];
+const MON_MODELS = ['DeepSeek', '豆包', '千问', '元宝'];  // 全项目仅关注这四个模型
+const MON_MODEL_ICON = { 'DeepSeek': ['#4B6BFB', 'D'], '豆包': ['#00C8C8', '豆'], '千问': ['#FF6A00', '千'], '元宝': ['#0052D9', '宝'] };
+const monModelIcon = name => {
+  const [bg, txt] = MON_MODEL_ICON[name] || ['#94a3b8', (name || '?')[0]];
+  return `<span class="inline-flex items-center justify-center w-6 h-6 rounded-lg text-[11px] font-bold text-white shrink-0" style="background:${bg}">${txt}</span>`;
+};
+const MON_PALETTE = ['#E6007E', '#5476D9', '#39A6A2', '#8F73C3', '#C38A36', '#DA8BA8', '#A7A3AD'];  // 本品牌固定粉色，竞品蓝/青/紫/黄
+let monFilter = { qids: null, time: '7', from: '', to: '', engines: null, tags: null, metric: 'mention_rate' };  // null=全部，Set=已选
+let monData = null;
+
+async function viewMonitor() {
+  const bid = platform ? platform.id : 0;
+  if (!bid) return emptyView('平台信息未加载，请刷新页面重试');
+  document.getElementById('view').innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <div><h1 class="text-2xl font-bold">监测中心</h1>
+      <p class="text-slate-500 text-sm mt-1">GEO工作流程：监测 → 知识库 → 选题 → 生成 → 审核 → 发布</p></div>
+    </div>
+    <div id="mon-opsbar" class="flex items-center flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400 py-2.5 my-3 border-y border-slate-100"></div>
+    <div id="mon-filter" class="flex flex-wrap items-center gap-2 mb-4"></div>
+    <div id="mon-body"><div class="py-16 text-center text-slate-400 text-sm">加载中…</div></div>`;
+  await monReload();
+}
+async function monReload() {
+  const el = document.getElementById('mon-body');
+  if (el) el.innerHTML = '<div class="py-16 text-center text-slate-400 text-sm">加载中…</div>';
+  const bid = selBrandVal();
+  const [queries, runs, stats, cards] = await Promise.all([
+    API(`/monitor/queries?brand_id=${bid}`).catch(() => []),
+    API(`/monitor/runs?brand_id=${bid}`).catch(() => []),
+    API('/stats').catch(() => ({})),
+    API('/knowledge-cards').catch(() => []),
+  ]);
+  window._monStats = stats || {};
+  window._monCards = Array.isArray(cards) ? cards.length : 0;
+  renderMonOpsbar();
+  const done = runs.filter(r => r.status === 'completed');
+  const samples = [];
+  await Promise.all(done.map(async r => {
+    try {
+      const ss = await API(`/monitor/samples?run_id=${r.id}`);
+      ss.forEach(s => samples.push({...s, _date: (r.finished_at || r.started_at || '').slice(0, 10) || ('#' + r.id)}));
+    } catch (e) {}
+  }));
+  monData = {queries: queries || [], runs: done, samples};
+  monRender();
+}
+function renderMonOpsbar() {
+  const el = document.getElementById('mon-opsbar');
+  if (!el) return;
+  const s = window._monStats || {};
+  const sep = '<span class="text-slate-200">·</span>';
+  el.innerHTML = `
+    <span>监测问题 <b class="text-slate-600">${s.monitor_queries ?? '—'}</b></span>${sep}
+    <span>知识卡 <b class="text-slate-600">${window._monCards || '—'}</b></span>${sep}
+    <span>内容总数 <b class="text-slate-600">${s.articles ?? '—'}</b></span>
+    <span>待审核 <b class="text-amber-500">${s.articles_by_status?.pending_review || 0}</b></span>
+    <span>已发布 <b class="text-emerald-600">${s.articles_by_status?.published || 0}</b></span>
+    <span class="ml-auto flex items-center gap-1 text-slate-300">内容生产正常运转<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span></span>`;
+}
+const monRefresh = () => monReload();
+const monToday = () => new Date().toISOString().slice(0, 10);
+function monInTime(dateStr) {
+  if (monFilter.time === 'all') return true;
+  if (monFilter.time === 'custom') {
+    if (monFilter.from && dateStr < monFilter.from) return false;
+    if (monFilter.to && dateStr > monFilter.to) return false;
+    return true;
+  }
+  const t = monToday(), y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (monFilter.time === 'today') return dateStr === t;
+  if (monFilter.time === 'yesterday') return dateStr === y;
+  const n = +monFilter.time, from = new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10);
+  return dateStr >= from && dateStr <= t;
+}
+function monQTags(qid) {
+  const q = (monData?.queries || []).find(x => x.id === qid);
+  return (q && q.tags && !Array.isArray(q.tags)) ? q.tags : {};
+}
+function monPool() {
+  if (!monData) return [];
+  const eng = monFilter.engines, qids = monFilter.qids, tagSet = monFilter.tags;
+  return monData.samples.filter(s => {
+    if (!monInTime(s._date)) return false;
+    if (eng && !eng.has(s.engine)) return false;
+    if (qids && !qids.has(s.query_id)) return false;
+    if (tagSet && ![...Object.values(monQTags(s.query_id))].some(v => tagSet.has(v))) return false;
+    return true;
+  });
+}
+function monCompute() {
+  const pool = monPool();
+  const ok = pool.filter(s => !s.error);
+  const n = ok.length || 1;
+  const rate = arr => arr.length ? Math.round(1000 * arr.length / n) / 10 : 0;
+  const ranks = ok.filter(s => s.brand_rank).map(s => s.brand_rank);
+  const overall = {
+    samples: ok.length, tasks: pool.length,
+    mention_rate: rate(ok.filter(s => s.brand_mentioned)),
+    top3_rate: rate(ok.filter(s => s.brand_rank >= 1 && s.brand_rank <= 3)),
+    avg_rank: ranks.length ? Math.round(100 * ranks.reduce((a, b) => a + b, 0) / ranks.length) / 100 : null,
+  };
+  /* AI推荐率（首推率）：品牌被 top1 推荐的样本占比 */
+  overall.top1_rate = rate(ok.filter(s => s.brand_rank === 1));
+  const compSet = new Set((platform?.competitors || '').split(/[,,]/).map(x => x.trim()).filter(Boolean));
+  ok.forEach(s => (s.competitors_mentioned || []).forEach(c => compSet.add(c)));
+  const comps = [...compSet];
+  const rates = [{name: platform?.name || '我的品牌', rate: overall.mention_rate, own: true},
+    ...comps.map(c => ({name: c, rate: rate(ok.filter(s => (s.competitors_mentioned || []).includes(c)))}))]
+    .sort((a, b) => b.rate - a.rate);
+  const domCnt = {};
+  ok.forEach(s => (s.cited_domains || []).forEach(dm => domCnt[dm] = (domCnt[dm] || 0) + 1));
+  /* 可见引用份额：全部引用中指向本品牌官方域名的比例 */
+  {
+    const ownDom = (platform?.domain || 'starselect.example.com').replace(/^www\./, '');
+    const domTotal = Object.values(domCnt).reduce((a, b) => a + b, 0);
+    const ownCnt = Object.entries(domCnt).filter(([dm]) => dm.includes(ownDom))
+      .reduce((a, [, c]) => a + c, 0);
+    overall.cite_share = domTotal ? Math.round(1000 * ownCnt / domTotal) / 10 : 0;
+  }
+  const citations = Object.entries(domCnt).map(([domain, count]) => ({domain, count})).sort((a, b) => b.count - a.count).slice(0, 15);
+  const engMap = {};
+  ok.forEach(s => {
+    const e = engMap[s.engine] = engMap[s.engine] || {name: s.engine, samples: 0, mentioned: 0};
+    e.samples++; if (s.brand_mentioned) e.mentioned++;
+  });
+  const engines = Object.values(engMap).map(e => ({...e, rate: Math.round(100 * e.mentioned / (e.samples || 1))})).sort((a, b) => b.rate - a.rate);
+  const qMap = {};
+  ok.forEach(s => {
+    const q = qMap[s.query_id] = qMap[s.query_id] || {id: s.query_id, samples: 0, mentioned: 0, ranks: []};
+    q.samples++; if (s.brand_mentioned) q.mentioned++; if (s.brand_rank) q.ranks.push(s.brand_rank);
+  });
+  const qmeta = {};
+  (monData.queries || []).forEach(q => qmeta[q.id] = q);
+  const qrows = Object.values(qMap).map(q => {
+    const m = qmeta[q.id] || {};
+    return {
+      id: q.id, question: m.question || ('#' + q.id), qgroup: m.qgroup || '场景', tags: m.tags || {},
+      mention_rate: Math.round(1000 * q.mentioned / (q.samples || 1)) / 10,
+      avg_rank: q.ranks.length ? Math.round(100 * q.ranks.reduce((a, b) => a + b, 0) / q.ranks.length) / 100 : null,
+      t3: Math.round(1000 * q.ranks.filter(r => r <= 3).length / (q.samples || 1)) / 10,
+      samples: q.samples, mentioned: q.mentioned,
+    };
+  });
+  const byDate = {};
+  ok.forEach(s => { (byDate[s._date] = byDate[s._date] || []).push(s); });
+  const dates = Object.keys(byDate).sort();
+  const dRate = (arr, fn) => arr.length ? Math.round(1000 * arr.filter(fn).length / arr.length) / 10 : 0;
+  const dAvgRank = arr => {
+    const rs = arr.filter(s => s.brand_rank).map(s => s.brand_rank);
+    return rs.length ? Math.round(100 * rs.reduce((a, b) => a + b, 0) / rs.length) / 100 : null;
+  };
+  /* 指标序列：提及率（品牌+竞品）/ 前三提及率（仅品牌）/ 平均排名（仅品牌） */
+  const metric = monFilter.metric;
+  const brandName = platform?.name || '我的品牌';
+  const brandVals = metric === 'top3_rate'
+    ? dates.map(dt => dRate(byDate[dt], s => s.brand_rank >= 1 && s.brand_rank <= 3))
+    : metric === 'avg_rank'
+      ? dates.map(dt => dAvgRank(byDate[dt]))
+      : dates.map(dt => dRate(byDate[dt], s => s.brand_mentioned));
+  const series = [{name: brandName, color: '#E6007E', solid: true, values: brandVals}];
+  if (metric === 'mention_rate') comps.forEach((c, i) => series.push({name: c, color: MON_PALETTE[i % MON_PALETTE.length], solid: false,
+    values: dates.map(dt => dRate(byDate[dt], s => (s.competitors_mentioned || []).includes(c)))}));
+  window._trendTips = dates.map((dt, i) => `<div class="text-xs font-semibold mb-1">${dt}</div>` +
+    series.map(s => `<div class="flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full inline-block" style="background:${s.color}"></span><span>${esc(s.name)}</span><b class="ml-auto pl-3">${s.values[i] != null ? s.values[i] + '%' : '—'}</b></div>`).join(''));
+  return {pool, overall, rates, citations, engines, qrows, dates, series};
+}
+const monKpi = (label, val, cls = 'text-slate-800', desc = '') =>
+  `<div class="bg-white rounded-xl px-4 py-3 shadow-sm"><div class="text-xs text-slate-400">${label}</div><b class="text-xl ${cls}">${val}</b>${desc ? `<div class="text-[11px] text-slate-400 mt-1 leading-4">${desc}</div>` : ''}</div>`;
+function monRender() {
+  const body = document.getElementById('mon-body');
+  if (!body) return;
+  monRenderFilter(null);
+  if (!monData || !monData.runs.length) {
+    body.innerHTML = `<div class="bg-white rounded-2xl p-12 text-center shadow-sm">
+      <div class="text-slate-400 text-sm mb-4">暂无采样数据——先在选题库添加问题，再发起采样</div>
+      <div class="flex gap-2 justify-center">
+        <button onclick="location.hash='#/topics'" class="text-sm bg-vip-600 text-white px-4 py-2 rounded-lg hover:bg-vip-700">去选题库添加问题</button>
+        <button onclick="runModal()" class="text-sm border border-vip-300 text-vip-600 px-4 py-2 rounded-lg">发起采样</button>
+      </div></div>`;
+    return;
+  }
+  const d = monCompute();
+  window._monRows = d.qrows;
+  monRenderFilter(d);
+  if (!d.pool.length) {
+    body.innerHTML = '<div class="bg-white rounded-2xl p-12 text-center shadow-sm text-slate-400 text-sm">当前筛选范围内没有采样数据，请调整问题 / 时间 / 模型筛选</div>';
+    return;
+  }
+  const maxR = Math.max(...d.rates.map(r => r.rate), 1);
+  const myRank = d.rates.findIndex(r => r.own) + 1;
+  const METRICS = [['mention_rate', 'AI提及率'], ['top3_rate', 'AI推荐率（前三位率）'], ['avg_rank', '平均排名']];
+  const metric = monFilter.metric;
+  const metricName = (METRICS.find(x => x[0] === metric) || ['', ''])[1];
+  const chartVals = d.series[0].values.filter(v => v != null);
+  const chartMax = metric === 'avg_rank' ? Math.max(4, ...chartVals.map(v => Math.ceil(v))) : 100;
+  const periodVal = metric === 'top3_rate' ? d.overall.top3_rate + '%'
+    : metric === 'avg_rank' ? (d.overall.avg_rank != null ? '#' + d.overall.avg_rank : '—')
+    : d.overall.mention_rate + '%';
+  body.innerHTML = `
+    <div class="text-xs text-slate-400 mb-2">基于 <b class="text-slate-500">${d.overall.samples}</b> 条采样回答 · <b class="text-slate-500">${d.dates.length}</b> 个采样日（口径见各指标下方说明）</div>
+    <div class="grid grid-cols-4 gap-3 mb-5">
+      ${monKpi('AI提及率', d.overall.mention_rate + '%', 'text-vip-600', '品牌在目标query查询中的出现率')}
+      ${monKpi('可见引用份额', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-vip-600', '在特定AI回答的所有引用中，指向本品牌的比例')}
+      ${monKpi('AI推荐率（首推率）', d.overall.top1_rate + '%', 'text-sky-600', '品牌在AI回答中被top1推荐的占比')}
+      ${monKpi('AI推荐率（前三位率）', d.overall.top3_rate + '%', 'text-sky-600', '品牌在AI回答中被前三位次推荐的占比')}
+    </div>
+    <div class="grid grid-cols-3 gap-6">
+      <div class="col-span-2 bg-white rounded-2xl shadow-sm p-5">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div class="font-semibold card-title">品牌趋势 <span class="text-xs text-slate-400 font-normal ml-1">${metricName} · ${d.dates.length} 个采样日</span></div>
+          <div class="flex gap-1.5">
+            ${METRICS.map(([k, l]) => `<button onclick="monSetMetric('${k}')" class="text-xs px-3 py-1 rounded-full border ${metric === k ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}">${l}</button>`).join('')}
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3 mb-1">
+          ${d.series.map(s => `<span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="inline-block w-4 h-0.5 rounded" style="background:${s.color};${s.solid ? '' : 'opacity:.8'}"></span>${esc(s.name)}</span>`).join('')}
+        </div>
+        ${trendChart(d.series, d.dates, metric === 'avg_rank' ? {max: chartMax, reverse: true, unit: ''} : {max: 100, unit: '%'})}
+        <div class="text-xs text-slate-400 mt-2">${metric === 'avg_rank' ? '平均排名：AI 回答中品牌出现的平均位次（越靠上越好）。' : metric === 'top3_rate' ? 'AI推荐率（前三位率）：品牌在AI回答中被前三位次推荐的占比。' : 'AI提及率：品牌在目标query查询中的出现率；虚线为竞品。'}</div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-5">
+        <div class="flex items-center divide-x divide-slate-100 text-center mb-4">
+          <div class="flex-1"><div class="text-xs text-slate-400">我的品牌</div><div class="font-bold text-vip-700 mt-0.5">第${myRank}名</div></div>
+          <div class="flex-1"><div class="text-xs text-slate-400">周期${metricName}</div><div class="font-bold mt-0.5">${periodVal}</div></div>
+          <div class="flex-1"><div class="text-xs text-slate-400">平均排名</div><div class="font-bold mt-0.5">${d.overall.avg_rank != null ? '#' + d.overall.avg_rank : '—'}</div></div>
+        </div>
+        <div class="text-xs text-slate-400 mb-1.5">AI提及率排行</div>
+        ${d.rates.map((r, i) => `<div class="flex items-center gap-2 py-1.5 ${r.own ? '-mx-2 px-2 bg-vip-50 rounded-lg' : ''}">
+          <span class="w-5 text-xs ${i < 3 ? 'font-semibold text-slate-600' : 'text-slate-400'}">${i + 1}</span>
+          <span class="flex-1 truncate text-sm ${r.own ? 'text-vip-700 font-semibold' : 'text-slate-600'}">${esc(r.name)}</span>
+          <div class="w-20 bg-slate-100 rounded-full h-1.5"><div class="${r.own ? 'bg-vip-500' : 'bg-slate-300'} h-1.5 rounded-full" style="width:${Math.round(100 * r.rate / maxR)}%"></div></div>
+          <span class="w-14 text-right text-xs ${r.own ? 'text-vip-700 font-semibold' : 'text-slate-500'}">${r.rate.toFixed(1)}%</span>
+        </div>`).join('')}
+      </div>
+    </div>
+    ${(window._monStats?.recent || []).length ? `
+    <div class="bg-white rounded-2xl shadow-sm p-5 mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-semibold card-title">最近内容 <span class="text-xs text-slate-400 font-normal ml-1">GEO 产出的文章</span></div>
+        <button onclick="location.hash='#/articles'" class="text-xs text-vip-600 hover:bg-vip-50 px-2 py-1 rounded">全部 →</button>
+      </div>
+      <table class="w-full text-sm"><tbody>
+        ${window._monStats.recent.slice(0, 5).map(a => `<tr class="border-t border-slate-100 cursor-pointer hover:bg-slate-50" onclick="openArticle(${a.id})">
+          <td class="py-2.5 font-medium">${esc(a.title)}</td>
+          <td class="text-slate-500 w-24">${esc(a.template)}</td>
+          <td class="w-24">${statusBadge(a.status)}</td>
+          <td class="text-slate-400 w-28 text-xs text-right">${fmtDate(a.created_at)}</td></tr>`).join('')}
+      </tbody></table>
+    </div>` : ''}`;
+}
+function monSetMetric(m) { monFilter.metric = m; monRender(); }
+function monRenderFilter(d) {
+  const el = document.getElementById('mon-filter');
+  if (!el) return;
+  const timeLabel = monFilter.time === 'custom'
+    ? `${monFilter.from || '…'} ~ ${monFilter.to || '…'}`
+    : (MON_TIMES.find(x => x[0] === monFilter.time) || ['', '近一周'])[1];
+  const qLabel = monFilter.qids ? `问题 · 已选 ${monFilter.qids.size}` : '全部问题';
+  const engLabel = monFilter.engines ? `模型 · 已选 ${monFilter.engines.size}` : '全部模型';
+  const tagLabel = monFilter.tags ? `标签 · 已选 ${monFilter.tags.size}` : '全部标签';
+  const fbtn = (fn, label) => `<button onclick="${fn}" class="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-vip-300 hover:text-vip-700">
+    <span>${label}</span><svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>`;
+  el.innerHTML = `
+    ${fbtn('monQModal()', qLabel)}
+    ${fbtn('monTimeModal()', timeLabel)}
+    ${fbtn('monEngModal()', engLabel)}
+    ${fbtn('monTagModal()', tagLabel)}
+    ${(monFilter.qids || monFilter.engines || monFilter.tags || monFilter.time !== '7') ? `<button onclick="monReset()" class="text-xs text-slate-400 hover:text-vip-600 px-2 py-1.5">重置</button>` : ''}
+    <span class="text-xs text-slate-400 ml-auto">${d ? `${d.overall.tasks} 条采样回答 · ${d.dates.length} 个采样日` : ''}</span>`;
+}
+function monReset() { monFilter = {qids: null, time: '7', from: '', to: '', engines: null, tags: null, metric: 'mention_rate'}; monRender(); }
+const monTimeLabel = () => monFilter.time === 'custom'
+  ? `${monFilter.from || '…'} ~ ${monFilter.to || '…'}`
+  : (MON_TIMES.find(x => x[0] === monFilter.time) || ['', '近一周'])[1];
+
+/* ---- 品牌趋势（重点视图：多品牌提及率走势 + 提及率排行） ---- */
+function svgTip(e, i) { const t = document.getElementById('svg-tip'); t.innerHTML = (window._trendTips || [])[i] || ''; t.style.display = 'block'; svgTipMove(e); }
+function svgTipMove(e) { const t = document.getElementById('svg-tip'); t.style.left = Math.min(e.clientX + 14, window.innerWidth - 200) + 'px'; t.style.top = (e.clientY - 10) + 'px'; }
+function svgTipHide() { document.getElementById('svg-tip').style.display = 'none'; }
+function trendChart(series, dates, opts = {}) {
+  const max = opts.max || 100, reverse = !!opts.reverse, unit = opts.unit != null ? opts.unit : '%';
+  const W = 720, H = 250, L = 40, R = 12, T = 12, B = 24;
+  const iw = W - L - R, ih = H - T - B, n = dates.length;
+  const x = i => n === 1 ? L + iw / 2 : L + iw * i / (n - 1);
+  const y = reverse ? (v => T + ih * (v / max)) : (v => T + ih * (1 - v / max));
+  const yAxis = i => Math.round(i * max / 4 * 10) / 10;
+  let grid = '';
+  for (let i = 0; i <= 4; i++) { const v = yAxis(i), ly = reverse ? T + ih * v / max : T + ih * (1 - v / max);
+    grid += `<line x1="${L}" y1="${ly}" x2="${W - R}" y2="${ly}" stroke="#eef0f4"/><text x="${L - 8}" y="${ly + 3.5}" text-anchor="end" font-size="10" fill="#94a3b8">${v}${unit}</text>`; }
+  let lines = '', pts = '';
+  /* 平滑曲线（中点二次贝塞尔）：折线 → 连续曲线，数据点仍精确着点 */
+  const smoothD = a => {
+    if (a.length < 3) return 'M' + a.map(p => p.join(',')).join(' L');
+    let d = `M${a[0][0]},${a[0][1]}`;
+    for (let i = 1; i < a.length - 1; i++) {
+      const mx = (a[i][0] + a[i + 1][0]) / 2, my = (a[i][1] + a[i + 1][1]) / 2;
+      d += ` Q${a[i][0]},${a[i][1]} ${mx},${my}`;
+    }
+    return d + ` L${a[a.length - 1][0]},${a[a.length - 1][1]}`;
+  };
+  series.forEach(s => {
+    const seg = s.values.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean);
+    if (seg.length > 1) lines += `<path d="${smoothD(seg)}" fill="none" stroke="${s.color}" stroke-width="${s.solid ? 2.5 : 1.8}"${s.solid ? '' : ' stroke-dasharray="5 4"'} stroke-linejoin="round" stroke-linecap="round" opacity="${s.solid ? 1 : .8}"/>`;
+    s.values.forEach((v, i) => { if (v != null) pts += `<circle cx="${x(i)}" cy="${y(v)}" r="${s.solid ? 3.5 : 2.5}" fill="#fff" stroke="${s.color}" stroke-width="2"/>`; });
+  });
+  const colW = n > 1 ? iw / (n - 1) : iw;
+  let hover = '';
+  for (let i = 0; i < n; i++) hover += `<rect x="${x(i) - colW / 2}" y="${T}" width="${colW}" height="${ih}" fill="transparent" onmouseenter="svgTip(event,${i})" onmousemove="svgTipMove(event)" onmouseleave="svgTipHide()"/>`;
+  const step = n <= 8 ? 1 : Math.ceil(n / 6);
+  let labels = '';
+  dates.forEach((dt, i) => { if (i % step === 0 || i === n - 1) labels += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#94a3b8">${dt}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full">${grid}${lines}${pts}${hover}${labels}</svg>`;
+}
+/* ---- 监测中心筛选弹层：问题选取 / 时间范围（可视化日历区间选择）/ 模型选取 / 标签选取 ---- */
+const MON_CAL_MONTHS = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+function monTimeModal(scope) {
+  const f = scope === 'ans' ? (_ansState || {time: '7', from: '', to: ''}) : monFilter;
+  const has = f.time === 'custom' && (f.from || f.to);
+  const base = (has ? (f.from || monToday()) : monToday()).split('-').map(Number);
+  window._tp = {
+    scope: scope || 'mon',
+    y: base[0], m: base[1] - 1,
+    s: has ? f.from : null, e: has ? f.to : null,
+    quick: null, all: f.time === 'all',
+  };
+  openModal(`
+    <div class="flex overflow-hidden rounded-2xl" style="width:600px">
+      <div class="w-32 py-3 border-r border-slate-100 shrink-0">
+        ${MON_TIMES.filter(([k]) => k !== 'all').map(([k, l]) => `<button onclick="monQuickPick('${k}')" id="tq-${k}"
+          class="w-full text-left px-5 py-2 text-[13px] hover:bg-slate-50">${l}</button>`).join('')}
+        <button onclick="monQuickPick('all')" id="tq-all"
+          class="w-full text-left px-5 py-2 text-[13px] hover:bg-slate-50">全部</button>
+      </div>
+      <div class="flex-1 p-4">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <button onclick="monCalNav(-1)" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 text-sm">◀</button>
+          <div class="flex items-center gap-1 text-[15px] font-semibold text-slate-700">
+            <select id="tp-month" onchange="monCalJump()" class="bg-transparent font-semibold outline-none cursor-pointer"></select>
+            <select id="tp-year" onchange="monCalJump()" class="bg-transparent font-semibold outline-none cursor-pointer"></select>
+          </div>
+          <button onclick="monCalNav(1)" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 text-sm">▶</button>
+        </div>
+        <div id="mon-cal"></div>
+        <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
+          <button onclick="closeModal()" class="px-6 py-1.5 text-sm rounded-full border border-vip-300 text-vip-600 hover:bg-vip-50">取消</button>
+          <button id="tp-apply" onclick="monApplyTime()" class="px-6 py-1.5 text-sm rounded-full bg-vip-100 text-vip-300 cursor-not-allowed" disabled>应用</button>
+        </div>
+      </div>
+    </div>`, 'max-w-2xl');
+  monCalRender();
+}
+function monQuickState() {
+  const tp = window._tp;
+  document.querySelectorAll('#modal-root [id^="tq-"]').forEach(b =>
+    b.className = b.className.replace(/ (bg-vip-50|text-vip-600|font-medium)/g, ''));
+  let active = null;
+  if (tp.all) active = 'tq-all';
+  else if (tp.quick) active = 'tq-' + tp.quick;
+  if (active) { const b = document.getElementById(active); if (b) b.className += ' bg-vip-50 text-vip-600 font-medium'; }
+}
+function monQuickPick(k) {
+  const tp = window._tp;
+  tp.all = k === 'all'; tp.quick = k === 'all' ? null : k;
+  if (k !== 'all') {
+    const fmt = d => d.toISOString().slice(0, 10);
+    if (k === 'today') { tp.s = tp.e = monToday(); }
+    else if (k === 'yesterday') { tp.s = tp.e = new Date(Date.now() - 86400000).toISOString().slice(0, 10); }
+    else { const n = +k; tp.s = new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10); tp.e = monToday(); }
+    const [yy, mm] = tp.s.split('-').map(Number);
+    tp.y = yy; tp.m = mm - 1;
+  }
+  monCalRender();
+}
+function monCalNav(delta) { const tp = window._tp; tp.m += delta; if (tp.m < 0) { tp.m = 11; tp.y--; } if (tp.m > 11) { tp.m = 0; tp.y++; } monCalRender(); }
+function monCalJump() { const tp = window._tp; tp.m = +document.getElementById('tp-month').value; tp.y = +document.getElementById('tp-year').value; monCalRender(); }
+function monCalClick(ds) {
+  const tp = window._tp;
+  if (tp.all || !tp.s || (tp.s && tp.e)) { tp.all = false; tp.quick = null; tp.s = ds; tp.e = null; }
+  else if (ds < tp.s) { tp.e = tp.s; tp.s = ds; }
+  else tp.e = ds;
+  monCalRender();
+}
+function monCalRender() {
+  const tp = window._tp;
+  monQuickState();
+  /* 月份/年份下拉 */
+  const msel = document.getElementById('tp-month'), ysel = document.getElementById('tp-year');
+  if (!msel) return;
+  msel.innerHTML = MON_CAL_MONTHS.map((l, i) => `<option value="${i}" ${i === tp.m ? 'selected' : ''}>${l}</option>`).join('');
+  const yNow = new Date().getFullYear();
+  ysel.innerHTML = Array.from({length: 8}, (_, i) => yNow - 4 + i).map(y => `<option value="${y}" ${y === tp.y ? 'selected' : ''}>${y}</option>`).join('');
+  /* 日历格：周一起始，前后月补齐 */
+  const first = new Date(Date.UTC(tp.y, tp.m, 1)), lead = (first.getUTCDay() + 6) % 7;
+  const days = new Date(Date.UTC(tp.y, tp.m + 1, 0)).getUTCDate();
+  const cells = [];
+  const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  for (let i = lead - 1; i >= 0; i--) { const d = new Date(first - (i + 1) * 86400000); cells.push({ds: fmt(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), dim: true, d: d.getUTCDate()}); }
+  for (let d = 1; d <= days; d++) cells.push({ds: fmt(tp.y, tp.m, d), dim: false, d});
+  while (cells.length % 7) { const last = cells[cells.length - 1].ds.split('-').map(Number); const d = new Date(Date.UTC(last[0], last[1] - 1, last[2] + 1)); cells.push({ds: fmt(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), dim: true, d: d.getUTCDate()}); }
+  const today = monToday();
+  const inRange = ds => tp.s && tp.e && ds >= tp.s && ds <= tp.e && ds !== tp.s && ds !== tp.e;
+  document.getElementById('mon-cal').innerHTML = `
+    <div class="grid grid-cols-7 text-center text-xs text-slate-400 mb-1">${['一', '二', '三', '四', '五', '六', '日'].map(w => `<div class="py-1">${w}</div>`).join('')}</div>
+    <div class="grid grid-cols-7 gap-y-0.5">
+      ${cells.map(c => {
+        const isEnd = c.ds === tp.s || c.ds === tp.e;
+        const cls = isEnd ? 'bg-vip-600 text-white font-semibold'
+          : inRange(c.ds) ? 'bg-vip-100 text-vip-700'
+          : c.dim ? 'text-slate-300' : 'text-slate-600 hover:bg-vip-50';
+        const under = c.ds === today && !isEnd ? ' underline underline-offset-4 decoration-vip-400' : '';
+        return `<button onclick="monCalClick('${c.ds}')" class="h-9 mx-auto w-9 rounded-lg text-[13px] ${cls}${under}">${c.d}</button>`;
+      }).join('')}
+    </div>`;
+  /* 应用按钮：有完整区间或选“全部”才可用 */
+  const ok = tp.all || (tp.s && tp.e);
+  const btn = document.getElementById('tp-apply');
+  btn.disabled = !ok;
+  btn.className = ok ? 'px-6 py-1.5 text-sm rounded-full bg-vip-600 text-white hover:bg-vip-700' : 'px-6 py-1.5 text-sm rounded-full bg-vip-100 text-vip-300 cursor-not-allowed';
+}
+function monApplyTime() {
+  const tp = window._tp, scope = tp.scope || 'mon';
+  const apply = (time, from, to) => {
+    if (scope === 'ans') { _ansState.time = time; _ansState.from = from; _ansState.to = to; closeModal(); renderAnswers(); }
+    else { monFilter.time = time; monFilter.from = from; monFilter.to = to; closeModal(); monRender(); }
+  };
+  if (tp.all) return apply('all', '', '');
+  if (tp.s && tp.e) return apply('custom', tp.s, tp.e);
+}
+
+function monQModal() {
+  if (!monData) return;
+  window._monQSel = monFilter.qids ? new Set(monFilter.qids) : new Set();
+  window._monQGroup = '全部';
+  window._monQSearch = '';
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-4">选择分析问题</div>
+      <div class="flex gap-2 mb-3">
+        <input id="mon-q-search" placeholder="搜索问题" oninput="window._monQSearch=this.value;monQRenderList()"
+          class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+        <button onclick="monQGroupAll()" class="text-sm text-vip-600 border border-vip-200 rounded-lg px-3 py-2 hover:bg-vip-50 whitespace-nowrap">全选本组</button>
+      </div>
+      <div id="mon-q-groups" class="flex flex-wrap gap-1.5 mb-3"></div>
+      <div id="mon-q-list" class="border border-slate-100 rounded-xl divide-y divide-slate-50 max-h-[46vh] overflow-y-auto"></div>
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-sm text-slate-500">已选 <b id="mon-q-count" class="text-vip-600">0</b> 个
+          <button onclick="window._monQSel.clear();monQRenderList()" class="text-xs text-slate-400 hover:text-rose-500 ml-2">清空</button></div>
+        <div class="flex gap-2">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+          <button onclick="monApplyQ()" class="px-5 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">应用</button>
+        </div>
+      </div>
+    </div>`, 'max-w-2xl');
+  monQRenderGroups();
+  monQRenderList();
+}
+function monQGroups() { return ['全部', ...new Set((monData?.queries || []).map(q => q.qgroup).filter(Boolean))]; }
+function monQRenderGroups() {
+  const el = document.getElementById('mon-q-groups');
+  if (!el) return;
+  el.innerHTML = monQGroups().map(g => `<button onclick="window._monQGroup='${esc(g)}';monQRenderGroups();monQRenderList()"
+    class="text-xs px-3 py-1.5 rounded-full border ${window._monQGroup === g ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}">${esc(g)}</button>`).join('');
+}
+function monQFiltered() {
+  const kw = (window._monQSearch || '').trim().toLowerCase();
+  return (monData?.queries || []).filter(q =>
+    (window._monQGroup === '全部' || q.qgroup === window._monQGroup) &&
+    (!kw || q.question.toLowerCase().includes(kw)));
+}
+function monQRenderList() {
+  const el = document.getElementById('mon-q-list');
+  if (!el) return;
+  const sel = window._monQSel;
+  el.innerHTML = monQFiltered().map(q =>
+    `<label class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
+      <input type="checkbox" class="w-4 h-4 accent-vip-600 shrink-0" ${sel.has(q.id) ? 'checked' : ''} onchange="monQTog(${q.id}, this.checked)">
+      <span class="flex-1 text-sm text-slate-600 truncate" title="${esc(q.question)}">${esc(q.question)}</span>
+    </label>`).join('') || '<div class="p-8 text-center text-slate-400 text-sm">没有匹配的问题</div>';
+  const cnt = document.getElementById('mon-q-count');
+  if (cnt) cnt.textContent = sel.size;
+}
+function monQTog(id, on) { on ? window._monQSel.add(id) : window._monQSel.delete(id); document.getElementById('mon-q-count').textContent = window._monQSel.size; }
+function monQGroupAll() { monQFiltered().forEach(q => window._monQSel.add(q.id)); monQRenderList(); }
+function monApplyQ() {
+  monFilter.qids = window._monQSel.size ? new Set(window._monQSel) : null;
+  closeModal(); monRender();
+}
+
+function monTagModal() {
+  if (!monData) return;
+  window._monTagSel = monFilter.tags ? new Set(monFilter.tags) : new Set();
+  const byDim = {};
+  (monData.queries || []).forEach(q => {
+    const t = (q.tags && !Array.isArray(q.tags)) ? q.tags : {};
+    Object.entries(t).forEach(([dim, v]) => {
+      if (v && String(v).trim()) (byDim[dim] = byDim[dim] || new Set()).add(String(v).trim());
+    });
+  });
+  window._monTagDims = byDim;
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-1">选择标签</div>
+      <p class="text-xs text-slate-400 mb-4">选中标签值后，仅统计带这些标签的问题</p>
+      <div class="max-h-[50vh] overflow-y-auto space-y-3">
+        ${Object.entries(byDim).map(([dim]) => `
+        <div>
+          <div class="text-xs text-slate-400 mb-1.5">${esc(dim)}</div>
+          <div id="mon-tag-${esc(dim)}" class="flex flex-wrap gap-1.5"></div>
+        </div>`).join('') || '<div class="text-slate-400 text-sm py-6 text-center">暂无标签数据</div>'}
+      </div>
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-sm text-slate-500">已选 <b id="mon-tag-count" class="text-vip-600">0</b> 个
+          <button onclick="window._monTagSel.clear();monTagRender()" class="text-xs text-slate-400 hover:text-rose-500 ml-2">清空</button></div>
+        <div class="flex gap-2">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+          <button onclick="monApplyTags()" class="px-5 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">应用</button>
+        </div>
+      </div>
+    </div>`, 'max-w-2xl');
+  monTagRender();
+}
+function monTagRender() {
+  const sel = window._monTagSel;
+  Object.entries(window._monTagDims || {}).forEach(([dim, vals]) => {
+    const el = document.getElementById(`mon-tag-${dim}`);
+    if (!el) return;
+    el.innerHTML = [...vals].sort().map(v2 =>
+      `<button onclick="monTagTog('${esc(v2)}')" class="text-[11px] px-2.5 py-1 rounded-full border ${sel.has(v2) ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}">${esc(v2)}</button>`).join('');
+  });
+  const cnt = document.getElementById('mon-tag-count');
+  if (cnt) cnt.textContent = sel.size;
+}
+function monTagTog(v) {
+  const sel = window._monTagSel;
+  sel.has(v) ? sel.delete(v) : sel.add(v);
+  monTagRender();
+}
+function monApplyTags() {
+  monFilter.tags = window._monTagSel.size ? new Set(window._monTagSel) : null;
+  closeModal(); monRender();
+}
+
+function monEngModal() {
+  if (!monData) return;
+  window._monEngSel = monFilter.engines ? new Set(monFilter.engines) : new Set(MON_MODELS);
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-1">选择模型</div>
+      <p class="text-xs text-slate-400 mb-4">全项目仅关注以下四个模型</p>
+      <div class="space-y-1.5 max-h-72 overflow-y-auto">
+        ${MON_MODELS.map(e => {
+          const cnt = monData.samples.filter(s => s.engine === e && monInTime(s._date)).length;
+          return `<label class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+            <input type="checkbox" class="w-4 h-4 accent-vip-600" ${window._monEngSel.has(e) ? 'checked' : ''} onchange="monEngTog('${esc(e)}', this.checked)">
+            ${monModelIcon(e)}
+            <b class="text-sm flex-1">${esc(e)}</b>
+            <span class="text-xs text-slate-400">${cnt} 条</span>
+          </label>`;
+        }).join('')}
+      </div>
+      <div class="flex justify-between items-center mt-5">
+        <button onclick="monEngAll()" class="text-sm text-vip-600 hover:underline">全选</button>
+        <div class="flex gap-2">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+          <button onclick="monApplyEng()" class="px-5 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">应用</button>
+        </div>
+      </div>
+    </div>`, 'max-w-md');
+}
+function monEngTog(name, on) { on ? window._monEngSel.add(name) : window._monEngSel.delete(name); }
+function monEngAll() { window._monEngSel = new Set(MON_MODELS); monEngModal(); }
+function monApplyEng() {
+  const same = window._monEngSel.size === MON_MODELS.length && MON_MODELS.every(e => window._monEngSel.has(e));
+  monFilter.engines = same ? null : new Set(window._monEngSel);
+  closeModal(); monRender();
+}
+async function gotoMonAnswers(qid) {
+  const row = (window._monRows || []).find(r => r.id === qid);
+  _ansState = {question: row ? row.question : null};
+  location.hash = '#/answers';
+}
+
+/* ================= 大模型回答记录（左侧对话列表 + 右侧内容详情） ================= */
+let _ansState = null;
+const ENGINE_DOT = {deepseek: '#4B6BFB', 'DeepSeek': '#4B6BFB', 'glm-4-flash': '#38bdf8', glm: '#38bdf8', 'GLM-4': '#38bdf8', doubao: '#f97316',
+  kimi: '#1f2937', 'Kimi': '#1f2937', qwen: '#7c3aed', yuanbao: '#0ea5e9', '文心一言': '#2932e1', 千问: '#7c3aed', 豆包: '#f97316', 元宝: '#0052D9'};
+const engineDot = e => ENGINE_DOT[e] || '#94a3b8';
+async function viewAnswers() {
+  const bid = selBrandVal();
+  const view = document.getElementById('view');
+  view.innerHTML = '<div class="text-slate-400 text-sm py-16 text-center">加载回答记录中…</div>';
+  const [runs, queries] = await Promise.all([
+    API(`/monitor/runs?brand_id=${bid}`).catch(() => []),
+    API(`/monitor/queries?brand_id=${bid}`).catch(() => []),
+  ]);
+  const completed = runs.filter(r => r.status === 'completed')
+    .sort((a, b) => ((a.started_at || '') > (b.started_at || '') ? -1 : 1));
+  if (!completed.length) {
+    view.innerHTML = `
+    <h1 class="text-2xl font-bold mb-1">大模型回答记录</h1>
+    <p class="text-slate-500 text-sm mb-6">还没有任何采样回答</p>
+    <div class="bg-white rounded-2xl shadow-sm p-10 text-center">
+      <div class="text-slate-400 text-sm mb-4">先到选题库勾选问题发起采样，这里会沉淀每次提问的原始回答</div>
+      <button onclick="location.hash='#/topics'" class="bg-vip-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-vip-700">去选题库</button>
+    </div>`;
+    return;
+  }
+  const qmap = {};
+  (queries || []).forEach(q => qmap[q.id] = q);
+  if (!_ansState) _ansState = {time: '7', from: '', to: '', engine: '全部', verdict: '全部', search: ''};
+  const runsKey = completed.map(r => r.id).join(',');
+  if (!_ansState.items || _ansState._runsKey !== runsKey) {
+    const items = [];
+    await Promise.all(completed.map(async r => {
+      const ss = await API(`/monitor/samples?run_id=${r.id}`).catch(() => []);
+      const d = (r.finished_at || r.started_at || '').slice(0, 10);
+      ss.forEach(s => {
+        const q = qmap[s.query_id] || {};
+        items.push({...s, question: q.question || ('#' + s.query_id), qgroup: q.qgroup || '',
+          tags: q.tags || [], date: d, run_id: r.id});
+      });
+    }));
+    _ansState = {..._ansState, items, _runs: completed, _runsKey: runsKey};
+    if (_ansState.question) {
+      const hit = items.find(s => s.question === _ansState.question);
+      _ansState.selected = hit ? hit.id : null;
+      _ansState.question = null;
+    }
+  }
+  renderAnswers();
+}
+function ansInTime(dateStr) {
+  const t = _ansState.time;
+  if (t === 'all') return true;
+  const today = new Date().toISOString().slice(0, 10);
+  const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (t === 'today') return dateStr === today;
+  if (t === 'yesterday') return dateStr === y;
+  if (t === 'custom') {
+    if (_ansState.from && dateStr < _ansState.from) return false;
+    if (_ansState.to && dateStr > _ansState.to) return false;
+    return true;
+  }
+  const n = +t, from = new Date(Date.now() - (n - 1) * 86400000).toISOString().slice(0, 10);
+  return dateStr >= from && dateStr <= today;
+}
+const ansTimeLabel = () => _ansState.time === 'custom'
+  ? `${_ansState.from || '…'} ~ ${_ansState.to || '…'}`
+  : (MON_TIMES.find(x => x[0] === _ansState.time) || ['', '近一周'])[1];
+function setAnsFilter(k, v) { _ansState[k] = v; renderAnswers(); }
+function setAnsSel(id) { _ansState.selected = id; renderAnswers(); }
+function setAnsSearch(v) { _ansState.search = v; _ansState._focusSearch = true; renderAnswers(); }
+function renderAnswers() {
+  const st = _ansState, view = document.getElementById('view');
+  const kw = (st.search || '').trim().toLowerCase();
+  const items = st.items.filter(s =>
+    ansInTime(s.date || '') &&
+    (st.engine === '全部' || s.engine === st.engine) &&
+    (st.verdict === '全部' || (st.verdict === '已提及' && s.brand_mentioned) ||
+      (st.verdict === '未提及' && !s.brand_mentioned && !s.error) || (st.verdict === '失败' && s.error)) &&
+    (!kw || (s.question || '').toLowerCase().includes(kw)));
+  items.sort((a, b) => a.question === b.question ? (a.engine > b.engine ? 1 : -1) : (a.question > b.question ? 1 : -1));
+  if (!st.selected || !items.some(s => s.id === st.selected)) st.selected = items.length ? items[0].id : null;
+  const sel = items.find(s => s.id === st.selected) || null;
+  const engines = [...new Set(st.items.map(s => s.engine))];
+  const b = platform;
+  const aliases = [b?.name, ...(b?.aliases || '').replace(/，/g, ',').split(',')].map(s => s.trim()).filter(Boolean);
+  const engChip = val => { const on = st.engine === val; return `<button onclick="setAnsFilter('engine','${esc(val)}')"
+    class="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-lg ${on ? 'bg-vip-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-vip-300 hover:text-vip-700'}">${val !== '全部' ? `<span class="w-2 h-2 rounded-full" style="background:${engineDot(val)}"></span>` : ''}${val === '全部' ? '全部模型' : esc(val)}</button>`; };
+  const vChip = val => { const on = st.verdict === val; return `<button onclick="setAnsFilter('verdict','${val}')"
+    class="text-xs px-2.5 py-1 rounded-full ${on ? 'bg-vip-600 text-white' : 'bg-slate-50 text-slate-500 hover:text-vip-600'}">${val}</button>`; };
+  const listHtml = items.map(s => {
+    const on = sel && sel.id === s.id;
+    return `<button onclick="setAnsSel(${s.id})" class="w-full text-left border rounded-xl p-3 transition-colors ${on ? 'border-vip-300 bg-vip-50/60' : 'border-slate-100 hover:bg-slate-50'}">
+      <div class="text-[13px] font-medium leading-snug line-clamp-2 ${on ? 'text-vip-700' : 'text-slate-700'}">${esc(s.question)}</div>
+      <div class="mt-1.5 flex items-center gap-2 text-[11px] text-slate-400">
+        <span>${s.date || ''}</span>
+        <span class="inline-block w-2 h-2 rounded-full shrink-0" style="background:${engineDot(s.engine)}"></span>
+        <span class="px-1.5 py-0.5 rounded-full ${s.error ? 'bg-rose-50 text-rose-600' : s.brand_mentioned ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}">${s.error ? '失败' : s.brand_mentioned ? '已提及' : '未提及'}</span>
+      </div>
+    </button>`; }).join('');
+  let detail;
+  if (!sel) detail = '<div class="h-full flex items-center justify-center text-slate-300 text-sm">左侧选择一条对话查看内容详情</div>';
+  else {
+    let html = esc(sel.answer || sel.error || '（空）');
+    for (const a of aliases) {
+      if (a) html = html.replace(new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+        m2 => `<mark class="bg-amber-200 rounded px-0.5">${m2}</mark>`);
+    }
+    detail = `
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold leading-snug">${esc(sel.question)}</h2>
+          <div class="text-xs text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
+            <span>🕐 ${sel.date || ''}</span><span>·</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background:${engineDot(sel.engine)}"></span>${esc(sel.engine)}</span>
+            <span>·</span><span>批次 #${sel.run_id}</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 bg-slate-50 rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
+        <span class="text-xs text-slate-400">品牌</span>
+        <span class="text-sm font-semibold">${esc(platform?.name || '品牌')}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full ${sel.error ? 'bg-rose-50 text-rose-600' : sel.brand_mentioned ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-500'}">${sel.error ? '采样失败' : sel.brand_mentioned ? '已提及' : '未提及'}</span>
+        ${sel.brand_rank ? `<span class="text-xs px-2 py-0.5 rounded-full bg-vip-50 text-vip-600">位次 #${sel.brand_rank}</span>` : ''}
+        ${tagPairs(sel.tags).length ? tagChips(sel.tags) : ''}
+      </div>
+      <div class="flex justify-end mt-5">
+        <div class="max-w-[75%] bg-vip-600 text-white text-sm px-4 py-2.5 rounded-2xl rounded-br-md">${esc(sel.question)}</div>
+      </div>
+      <div class="mt-5">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0" style="background:${engineDot(sel.engine)}">${esc(sel.engine.slice(0, 1).toUpperCase())}</span>
+          <b class="text-sm">${esc(sel.engine)}</b>
+          ${sel.own_domain_cited ? '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">引用官网</span>' : ''}
+        </div>
+        <div class="mt-2 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${html}</div>
+        ${(sel.cited_domains || []).length ? `<div class="mt-2 flex flex-wrap gap-1.5">
+          <span class="text-xs text-slate-400 leading-5">引用：</span>${sel.cited_domains.map(d2 => `<span class="text-xs px-2 py-0.5 rounded ${d2 === platform?.domain ? 'bg-vip-50 text-vip-600 font-medium' : 'bg-slate-100 text-slate-500'}">${esc(d2)}</span>`).join('')}</div>` : ''}
+        ${(sel.competitors_mentioned || []).length ? `<div class="mt-1.5 text-xs text-slate-400">提及竞品：${sel.competitors_mentioned.map(esc).join('、')}</div>` : ''}
+      </div>
+    </div>`;
+  }
+  view.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div><h1 class="text-2xl font-bold">大模型回答记录</h1>
+      <p class="text-slate-500 text-sm mt-1">查看各大模型对品牌相关提问的回答内容与引用详情</p></div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <button onclick="monTimeModal('ans')" class="flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:border-vip-300 hover:text-vip-700">
+        <span>${ansTimeLabel()}</span><svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>
+      ${engChip('全部')}
+      ${engines.map(e => engChip(e)).join('')}
+    </div>
+    <div class="grid grid-cols-12 gap-5">
+      <div class="col-span-4 bg-white rounded-2xl shadow-sm flex flex-col overflow-hidden" style="height:calc(100vh - 250px);min-height:420px">
+        <div class="p-3 border-b border-slate-100">
+          <input id="ans-search" value="${esc(st.search || '')}" oninput="setAnsSearch(this.value)" placeholder="搜索提问…" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+        </div>
+        <div class="px-3 py-2 flex items-center gap-1.5 border-b border-slate-50">
+          ${vChip('全部')}${vChip('已提及')}${vChip('未提及')}${st.items.some(s => s.error) ? vChip('失败') : ''}
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-2">${listHtml || '<div class="p-8 text-center text-slate-300 text-xs">无匹配对话</div>'}</div>
+      </div>
+      <div class="col-span-8 bg-white rounded-2xl shadow-sm overflow-y-auto" style="height:calc(100vh - 250px);min-height:420px">${detail}</div>
+    </div>`;
+  if (st._focusSearch) {
+    const el = document.getElementById('ans-search');
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    st._focusSearch = false;
+  }
+}
+
+async function viewSamples(runId, queryId) {
+  const row = (window._monRows || []).find(r => r.id === queryId);
+  const question = row ? row.question : '监测问题 #' + queryId;
+  const ss = await API(`/monitor/samples?run_id=${runId}&query_id=${queryId}`);
+  const b = platform;
+  const aliases = [b?.name, ...(b?.aliases || '').replace(/，/g, ',').split(',')].map(s => s.trim()).filter(Boolean);
+  openModal(`
+    <div class="flex items-start justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-xl z-10">
+      <div>          <div class="font-bold">${esc(question)}</div>
+      <div class="text-xs text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">${row && row.tags && tagPairs(row.tags).length ? tagChips(row.tags) : ''}<span>${ss.length} 个引擎回答 · 品牌提及以高亮标出</span></div></div>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">✕</button>
+    </div>
+    <div class="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+      ${ss.map(s => sampleCard(s, aliases)).join('')}
+    </div>`, 'max-w-3xl');
+}
+function sampleCard(s, aliases) {
+  const verdict = s.error ? ['采样失败', 'bg-rose-50 text-rose-600']
+    : s.brand_mentioned ? ['已提及', 'bg-emerald-50 text-emerald-700']
+    : ['未提及', 'bg-slate-100 text-slate-500'];
+  let html = esc(s.answer || s.error || '（空）');
+  for (const a of aliases) {
+    if (a) html = html.replace(new RegExp(a.replace(/[.*+?^${}()|[\]\\\\]/g, '\\$&'), 'g'),
+      m => `<mark class="bg-amber-200 rounded px-0.5">${m}</mark>`);
+  }
+  return `<div class="border border-slate-200 rounded-2xl p-4">
+    <div class="flex items-center gap-2 mb-2 text-sm">
+      <b>${esc(s.engine)}</b>
+      ${s.brand_rank ? `<span class="text-xs px-2 py-0.5 rounded-full bg-vip-50 text-vip-600">位次 #${s.brand_rank}</span>` : ''}
+      <span class="text-xs px-2 py-0.5 rounded-full ${verdict[1]}">${verdict[0]}</span>
+      ${s.needs_review ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">待复核</span>' : ''}
+      ${s.negative_cues.length ? `<span class="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600">疑似负面：${s.negative_cues.join('、')}</span>` : ''}
+    </div>
+    <div class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">${html}</div>
+    ${s.cited_domains.length ? `<div class="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+      ${s.cited_domains.map(d => `<span class="text-xs px-2 py-0.5 rounded ${d === platform?.domain ? 'bg-vip-50 text-vip-600 font-medium' : 'bg-slate-100 text-slate-500'}">${esc(d)}</span>`).join('')}
+    </div>` : ''}
+    ${s.competitors_mentioned.length ? `<div class="mt-1.5 text-xs text-slate-400">提及竞品：${s.competitors_mentioned.map(esc).join('、')}</div>` : ''}
+  </div>`;
+}
+
+async function topicFromQuery(rowId) {
+  const row = (window._monRows || []).find(r => r.id === rowId);
+  if (!row) return;
+  const intent = ['推荐', '比较', '替代', '价格'].includes(row.qgroup) ? 'buyer_intent' : 'education';
+  await API('/topics', {method: 'POST', body: {brand_id: selBrandVal(), keyword: row.question, intent, dimension: '问答长尾', market: 'cn'}});
+  toast('已加入选题库 → 可去内容工厂生产内容');
+}
+
+/* ---- 添加问题（选题库与监测共用入口，问题库已并入选题库） ---- */
+function mqModal() {
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-1">添加监测问题</div>
+      <p class="text-xs text-slate-400 mb-4">写用户真实会问 AI 的问题（建议不带品牌名）</p>
+      <input id="mq-q" placeholder="如：娇兰精粹水去哪个平台买划算" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+      <div class="mt-3">
+        <label class="text-slate-600 text-xs">分组标签 <span class="text-slate-300">（自定义，可从常用分组中选择）</span></label>
+        <input id="mq-group" list="mq-groups-list" placeholder="如：推荐 / 价格 / 风险，或输入自定义分组" class="w-full mt-1.5 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+        <datalist id="mq-groups-list">${MQ_GROUPS.map(g => `<option value="${g}">`).join('')}</datalist>
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          ${MQ_GROUPS.map(g => `<button onclick="document.getElementById('mq-group').value='${g}'" class="text-[11px] px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 hover:border-vip-300 hover:text-vip-600">${g}</button>`).join('')}
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="text-slate-600 text-xs">标签（七个维度，可留空）</label>
+        <div class="grid grid-cols-2 gap-2 mt-1.5" id="mq-tags">
+          ${MQ_TAGS.map(t => `<div><label class="text-slate-400 text-[11px]">${t}</label>
+            <input data-tagdim="${t}" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-vip-200" placeholder="${({ '决策机制': '渠道推荐', '关注点': '价格性价比', '人群': '干敏皮', '品类': '精粹水', '品牌': '娇兰', '场景': '送礼', '约束': '1000元预算' })[t] || ''}"></div>`).join('')}
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700">取消</button>
+        <button onclick="saveMQ()" class="px-4 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">保存</button>
+      </div>
+    </div>`);
+}
+async function saveMQ() {
+  const question = v('mq-q'); if (!question) return toast('请填写问题', 'err');
+  const tags = {};
+  document.querySelectorAll('#mq-tags input[data-tagdim]').forEach(el => {
+    const val = el.value.trim();
+    if (val) tags[el.dataset.tagdim] = val;
+  });
+  await API('/monitor/queries', {method: 'POST', body: {brand_id: selBrandVal(), question,
+    qgroup: v('mq-group') || '未分组', market: 'cn', brand_in_question: false, tags}});
+  closeModal(); viewTopics();
+}
+async function toggleMQ(id) { await API(`/monitor/queries/${id}`, {method: 'PATCH'}); renderMonitorBody(); }
+async function delMQ(id) { if (!confirm('删除该监测问题？')) return; await API(`/monitor/queries/${id}`, {method: 'DELETE'}); renderMonitorBody(); }
+
+/* 采样批次独立视图已移除：发起采样已迁移到选题库（按筛选范围发起） */
+
+function topicsRunModal() {
+  /* 范围 = 勾选的问题（跨筛选保留） */
+  const sel = window._topicSel || new Set();
+  const scope = (window._topicRows || []).filter(r => sel.has(r.q.id)).map(r => r.q);
+  if (!scope.length) return toast('请先勾选要采样的问题', 'err');
+  window._runScope = scope;
+  window._runTimes = 1;
+  window._runEngines = new Set(MON_MODELS);
+  openModal(`
+    <div class="p-6">
+      <div class="font-bold text-lg mb-1">发起采样</div>
+      <p class="text-xs text-slate-400 mb-4">对已勾选的 <b class="text-vip-600">${scope.length}</b> 个问题，向所选模型发起提问并判定提及与排名。</p>
+      <div class="text-slate-600 text-xs mb-1.5">选择模型</div>
+      <div class="space-y-1.5 mb-4">
+        ${MON_MODELS.map(e => `<label class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+          <input type="checkbox" class="run-eng w-4 h-4 accent-vip-600" value="${esc(e)}" checked onchange="runEngSync(this)">
+          ${monModelIcon(e)}
+          <b class="text-sm flex-1">${esc(e)}</b>
+        </label>`).join('')}
+      </div>
+      <div class="text-slate-600 text-xs mb-1.5">采样次数 <span class="text-slate-300">（每个问题每个模型提问几次，多次采样结果更稳定）</span></div>
+      <div class="flex gap-1.5 mb-4">
+        ${[1, 2, 3].map(n => `<button onclick="setRunTimes(${n})" class="run-times text-xs px-3.5 py-1.5 rounded-full border ${n === 1 ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}">${n} 次</button>`).join('')}
+      </div>
+      <div class="flex items-center justify-between">
+        <div class="text-xs text-slate-400">预计任务：<b class="text-slate-600" id="run-task-count">${scope.length * MON_MODELS.length}</b> 个</div>
+        <div class="flex gap-2">
+          <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">取消</button>
+          <button onclick="topicsStartRun()" class="px-5 py-2 text-sm rounded-lg bg-vip-600 text-white hover:bg-vip-700">开始采样</button>
+        </div>
+      </div>
+    </div>`, 'max-w-lg');
+}
+function runEngSync(cb) { cb.checked ? window._runEngines.add(cb.value) : window._runEngines.delete(cb.value); runTaskCount(); }
+function setRunTimes(n) {
+  window._runTimes = n;
+  document.querySelectorAll('.run-times').forEach(b => {
+    const on = b.textContent.trim().startsWith(String(n));
+    b.className = `run-times text-xs px-3.5 py-1.5 rounded-full border ${on ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}`;
+  });
+  runTaskCount();
+}
+function runTaskCount() {
+  const el = document.getElementById('run-task-count');
+  if (el) el.textContent = (window._runScope || []).length * window._runEngines.size * window._runTimes;
+}
+async function topicsStartRun() {
+  const engines = [...window._runEngines];
+  if (!engines.length) return toast('请至少选择一个模型', 'err');
+  try {
+    const r = await API('/monitor/runs', {method: 'POST', body: {
+      brand_id: selBrandVal(), engine_names: engines,
+      query_ids: (window._runScope || []).map(q => q.id), times: window._runTimes || 1,
+    }});
+    closeModal();
+    toast(`采样已启动：${r.queries || (window._runScope || []).length} 个问题 × ${engines.length} 模型 × ${window._runTimes || 1} 次 = ${r.total} 个任务`);
+    setTimeout(() => pollRun(r.id), 800);
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function pollRun(runId) {
+  clearTimeout(pollTimer);
+  try {
+    const r = await API(`/monitor/runs/${runId}`);
+    const el = document.getElementById(`run-prog-${runId}`);
+    if (el && r.status === 'running') {
+      el.innerHTML = `<div class="w-48 bg-slate-100 rounded-full h-1.5"><div class="bg-vip-500 h-1.5 rounded-full transition-all" style="width:${r.total ? Math.round(100 * r.done / r.total) : 0}%"></div></div><span class="text-xs text-slate-400">${r.done}/${r.total}</span>`;
+    } else if (el) {
+      el.innerHTML = `<span class="text-xs text-emerald-600">已完成 ${r.done}/${r.total}</span>`;
+    }
+    if (r.status === 'running') pollTimer = setTimeout(() => pollRun(runId), 4000);
+    else {
+      toast(`采样完成：${r.done}/${r.total} 个任务`);
+      if (location.hash.includes('monitor')) monRefresh();
+    }
+  } catch (e) { console.error(e); }
+}
+
+/* ================= 腾讯GEO平台（Answerbit 真实数据预览） ================= */
+async function abFetch(path, params) {
+  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+  const r = await fetch('/api/answerbit' + path + qs);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
+  return j;
+}
+async function abCall(path, payload) {
+  const r = await fetch('/api/answerbit/call', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, payload: payload || {} }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
+  return j.data;
+}
+const abRetry = (fn, tries = 2) => fn().catch(e => tries > 1
+  ? new Promise(r => setTimeout(r, 900)).then(() => abRetry(fn, tries - 1))
+  : Promise.reject(e));
+/* 限并发请求池：平台对同 Key 高并发会限流（400），3 路以内稳定 */
+async function abPool(tasks, limit = 3) {
+  const out = new Array(tasks.length); let i = 0;
+  const worker = async () => { while (i < tasks.length) { const k = i++; out[k] = await tasks[k](); } };
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return out;
+}
+/* ================= 腾讯 Answerbit 真实数据视图（已配置 API Key 时主页面自动切换，无 Key 回退本地演示） ================= */
+let AB_MODE = null;
+const abMode = async () => {
+  if (AB_MODE === null) {
+    try { AB_MODE = !!(await abFetch('/status')).configured; }
+    catch (e) { AB_MODE = false; }
+  }
+  return AB_MODE;
+};
+
+/* ================= 路由与辅助 ================= */
+function emptyView(msg) {
+  document.getElementById('view').innerHTML = `<div class="text-slate-400 py-20 text-center">${msg}</div>`;
+}
+
+async function render() {
+  renderNav();
+  const view = location.hash.replace('#/', '') || 'monitor';
+  try {
+    const fn = ({dashboard: viewMonitor, monitor: viewMonitor, knowledge: viewKnowledge, topics: viewTopics, answers: viewAnswers,
+      monitor: viewMonitor, factory: viewFactory, articles: viewFactory}[view] || viewMonitor);
+    await fn();  // await：async 视图函数的运行时错误也能被下方 catch 接住
+  } catch (e) {
+    console.error(e);
+    emptyView('页面加载出错：' + e.message + '（多为浏览器缓存旧版页面，请 Cmd+Shift+R 强制刷新）');
+    toast(e.message, 'err');
+  }
+}
+
+window.addEventListener('hashchange', render);
+refreshPlatform().then(render);
+</script>
+</body>
+</html>
