@@ -1399,16 +1399,18 @@ function monCompute() {
     .sort((a, b) => b.rate - a.rate);
   const domCnt = {};
   ok.forEach(s => (s.cited_domains || []).forEach(dm => domCnt[dm] = (domCnt[dm] || 0) + 1));
-  /* 被信任口径：品牌官方域名引用次数 / 信源引用占比 / 引用了官方域名的样本占比 */
+  /* 被信任口径：品牌内容（含子域投放链接）引用次数与占比 / 官网（精确域名）引用占全部引用比例 */
   {
     const ownDom = (platform?.domain || 'starselect.example.com').replace(/^www\./, '');
     const domTotal = Object.values(domCnt).reduce((a, b) => a + b, 0);
     const ownCnt = Object.entries(domCnt).filter(([dm]) => dm.includes(ownDom))
       .reduce((a, [, c]) => a + c, 0);
+    const offCnt = Object.entries(domCnt)
+      .filter(([dm]) => dm === ownDom || dm === 'www.' + ownDom)
+      .reduce((a, [, c]) => a + c, 0);
     overall.own_cite_cnt = ownCnt;
     overall.cite_share = domTotal ? Math.round(1000 * ownCnt / domTotal) / 10 : 0;
-    overall.own_cite_rate = ok.length
-      ? Math.round(1000 * ok.filter(s => (s.cited_domains || []).some(dm => dm.includes(ownDom)) || s.own_domain_cited).length / ok.length) / 10 : 0;
+    overall.official_cite_rate = domTotal ? Math.round(1000 * offCnt / domTotal) / 10 : 0;
   }
   const citations = Object.entries(domCnt).map(([domain, count]) => ({domain, count})).sort((a, b) => b.count - a.count).slice(0, 15);
   const engMap = {};
@@ -1509,9 +1511,9 @@ function monRender() {
     <div class="mb-5">
       <div class="flex items-center gap-2 mb-2"><span class="font-semibold card-title">被信任</span><span class="text-xs text-slate-400">品牌作为可信信源被 AI 引用的程度</span></div>
       <div class="grid grid-cols-4 gap-3">
-        ${monKpi('品牌引用次数', d.overall.own_cite_cnt || 0, 'text-emerald-600', '全部回答中引用品牌官方域名的总次数')}
-        ${monKpi('品牌信源引用率', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-emerald-600', '品牌域名引用占全部引用的比例')}
-        ${monKpi('官方引用率', (d.overall.own_cite_rate || 0) + '%', 'text-emerald-600', '引用了品牌官方域名的回答占比')}
+        ${monKpi('品牌内容引用次数', d.overall.own_cite_cnt || 0, 'text-emerald-600', '品牌自有投放内容的引用总次数')}
+        ${monKpi('品牌内容引用率', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-emerald-600', '品牌内容引用占全部引用的比例')}
+        ${monKpi('官方引用率', (d.overall.official_cite_rate || 0) + '%', 'text-emerald-600', '品牌官网引用占全部引用的比例')}
       </div>
     </div>
     <div class="grid grid-cols-3 gap-6">
