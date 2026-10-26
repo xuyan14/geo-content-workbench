@@ -32,7 +32,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 或直接 `bash scripts/start.sh`（自动处理进程清理 / venv / 就绪探测）。
 
-> 内置演示数据（品牌档案「星野优选」、监测问题集、知识卡）均为**虚构数据**，仅用于开箱演示；可在 `app/seed.py` 与 `app/real_queries.py` 中替换为任意真实品牌与问题集。
+> 内置数据说明：监测问题集与词包标签为**真实 GEO 词包数据**（120 条问题 × 7 维标签）；品牌档案「星野优选」与知识卡为**虚构演示数据**，可在 `app/seed.py` 中替换为任意真实品牌档案。
 
 ## 接入 LLM（可选，强烈建议）
 
