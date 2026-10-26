@@ -24,6 +24,9 @@ AI 问答监测 → 可见度洞察 → 选题沉淀 → 内容生产 → 审核
 
 ## 快速开始
 
+**在线演示（GitHub Pages，mock 数据）**：https://xuyan14.github.io/geo-content-workbench/
+> 纯静态部署，无后端依赖；打开后自动进入离线模式，基于内置 mock 数据完整体验全部页面（真实词包问题集 + 演示品牌档案）。
+
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m uvicorn app.main:app --port 8787
