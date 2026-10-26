@@ -1506,7 +1506,7 @@ function monRender() {
     </div>
     <div class="mb-5">
       <div class="flex items-center gap-2 mb-2"><span class="font-semibold card-title">被信任</span><span class="text-xs text-slate-400">品牌作为可信信源被 AI 引用的程度</span></div>
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-4 gap-3">
         ${monKpi('品牌引用次数', d.overall.own_cite_cnt || 0, 'text-emerald-600', '全部回答中引用品牌官方域名的总次数')}
         ${monKpi('品牌信源引用率', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-emerald-600', '品牌域名引用占全部引用的比例')}
         ${monKpi('官方引用率', (d.overall.own_cite_rate || 0) + '%', 'text-emerald-600', '引用了品牌官方域名的回答占比')}
