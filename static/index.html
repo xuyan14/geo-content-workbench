@@ -1513,7 +1513,7 @@ function monRender() {
       <div class="grid grid-cols-4 gap-3">
         ${monKpi('品牌内容引用次数', d.overall.own_cite_cnt || 0, 'text-emerald-600', '品牌自有投放内容的引用总次数')}
         ${monKpi('品牌内容引用率', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-emerald-600', '品牌内容引用占全部引用的比例')}
-        ${monKpi('官方引用率', (d.overall.official_cite_rate || 0) + '%', 'text-emerald-600', '品牌官网引用占全部引用的比例')}
+        ${monKpi('官网引用率', (d.overall.official_cite_rate || 0) + '%', 'text-emerald-600', '品牌官网引用占全部引用的比例')}
       </div>
     </div>
     <div class="grid grid-cols-3 gap-6">
