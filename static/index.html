@@ -1972,7 +1972,50 @@ function ansInTime(dateStr) {
 const ansTimeLabel = () => _ansState.time === 'custom'
   ? `${_ansState.from || '…'} ~ ${_ansState.to || '…'}`
   : (MON_TIMES.find(x => x[0] === _ansState.time) || ['', '近一周'])[1];
-/* 在容器内的文本节点上高亮品牌名/别名（渲染后处理，不破坏 Markdown 已生成的 DOM 结构） */
+/* 引用来源表格：favicon + 页面标题（可点击跳转原文）+ 所属站点；品牌官网行高亮 */
+function citeTable(links, platform) {
+  const ownDom = (platform?.domain || '').replace(/^www\./, '');
+  const AV_COLORS = ['#5476D9', '#39A6A2', '#8F73C3', '#C38A36', '#DA8BA8', '#39A6A2', '#5476D9'];
+  const avatar = dm => {
+    const h = [...dm].reduce((a, c) => a + c.charCodeAt(0), 0);
+    const color = AV_COLORS[h % AV_COLORS.length];
+    return `<img src="https://api.iowen.cn/favicon/${dm}.png" class="w-4 h-4 rounded shrink-0"
+      onerror="this.outerHTML='<span class=\\'w-4 h-4 rounded text-white text-[9px] font-bold flex items-center justify-center shrink-0\\' style=\\'background:${color}\\'>${esc(dm[0].toUpperCase())}</span>'">`;
+  };
+  const rows = links.map(l => {
+    const dm = l.domain || (l.url || '').split('/')[2] || '';
+    const own = ownDom && dm.includes(ownDom);
+    const title = l.title || dm;
+    return `<tr class="${own ? 'bg-vip-50/50' : ''} border-t border-slate-100">
+      <td class="px-3 py-2 text-xs text-slate-400 w-10">${l.index ?? ''}</td>
+      <td class="px-3 py-2 min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          ${avatar(dm)}
+          <a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(title)}"
+            class="truncate text-[13px] text-slate-700 hover:text-vip-600 hover:underline">${esc(title)}</a>
+        </div>
+      </td>
+      <td class="px-3 py-2 w-56">
+        <div class="flex items-center gap-1.5">
+          <a href="${esc(l.url)}" target="_blank" rel="noopener"
+            class="text-xs truncate max-w-[130px] ${own ? 'text-vip-600 font-medium' : 'text-slate-500 hover:text-vip-600'} hover:underline">${esc(dm)}</a>
+          ${own ? '<span class="text-[11px] px-1.5 py-px rounded bg-vip-100 text-vip-600 shrink-0">品牌官网</span>' : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div class="mt-3 border border-slate-200 rounded-xl overflow-hidden">
+    <div class="px-4 py-2.5 bg-slate-50/80 text-sm font-semibold card-title">引用来源
+      <span class="text-xs text-slate-400 font-normal ml-1">${links.length} 条 · 点击标题或站点可跳转原文</span></div>
+    <table class="w-full"><thead>
+      <tr class="bg-slate-50/50 text-xs text-slate-400 text-left">
+        <th class="px-3 py-2 font-normal w-10">序号</th>
+        <th class="px-3 py-2 font-normal">来源页面</th>
+        <th class="px-3 py-2 font-normal w-56">所属站点</th>
+      </tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+
 function hlBrand(container, aliases) {
   const words = (aliases || []).map(a => String(a).trim()).filter(Boolean);
   if (!container || !words.length) return;
@@ -2062,7 +2105,7 @@ function renderAnswers() {
           ${sel.own_domain_cited ? '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">引用官网</span>' : ''}
         </div>
         <div id="ans-body" class="mt-2 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed markdown">${html}</div>
-        ${(sel.cited_domains || []).length ? `<div class="mt-2 flex flex-wrap gap-1.5">
+        ${(sel.cited_links || []).length ? citeTable(sel.cited_links, platform) : (sel.cited_domains || []).length ? `<div class="mt-2 flex flex-wrap gap-1.5">
           <span class="text-xs text-slate-400 leading-5">引用：</span>${sel.cited_domains.map(d2 => `<span class="text-xs px-2 py-0.5 rounded ${d2 === platform?.domain ? 'bg-vip-50 text-vip-600 font-medium' : 'bg-slate-100 text-slate-500'}">${esc(d2)}</span>`).join('')}</div>` : ''}
         ${(sel.competitors_mentioned || []).length ? `<div class="mt-1.5 text-xs text-slate-400">提及竞品：${sel.competitors_mentioned.map(esc).join('、')}</div>` : ''}
       </div>

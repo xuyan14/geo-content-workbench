@@ -898,12 +898,15 @@ def _ensure_answers(client: AnswerbitClient, rows: list, brand_domain: str = "")
             try:
                 detail = client.task_detail(task_id=rec["_ab_task_id"]) or {}
                 rec["answer"] = detail.get("llm_output") or ""
-                # 引用域名（links 内 URL 的 host，去 www.）；含品牌官方域 → own_domain_cited
-                domains = sorted({str(l.get("url") or "").split("/")[2].lower()
-                                  for l in (detail.get("links") or [])
-                                  if "://" in str(l.get("url") or "")})
-                domains = [d[4:] if d.startswith("www.") else d for d in domains]
-                if domains:
+                # 引用链接明细（index/url/title/domain）与域名聚合；含品牌官方域 → own_domain_cited
+                strip_www = lambda d: d[4:] if d.startswith("www.") else d
+                host = lambda u: strip_www(str(u or "").split("/")[2].lower()) if "://" in str(u or "") else ""
+                cites = [{"index": l.get("index"), "url": l.get("url"),
+                          "title": (l.get("title") or "").strip(), "domain": host(l.get("url"))}
+                         for l in (detail.get("links") or []) if l.get("url")]
+                domains = sorted({c["domain"] for c in cites if c["domain"]})
+                if cites:
+                    rec["cited_links"] = cites
                     rec["cited_domains"] = domains
                     rec["own_domain_cited"] = bool(dom) and any(dom in d for d in domains)
             except (ApiError, AuthError, NetworkError):
