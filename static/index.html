@@ -1279,6 +1279,12 @@ const monModelIcon = name => {
   return `<span class="inline-flex items-center justify-center w-6 h-6 rounded-lg text-[11px] font-bold text-white shrink-0" style="background:${bg}">${txt}</span>`;
 };
 const MON_PALETTE = ['#E6007E', '#5476D9', '#39A6A2', '#8F73C3', '#C38A36', '#DA8BA8', '#A7A3AD'];  // 本品牌固定粉色，竞品蓝/青/紫/黄
+window._trendHidden = new Set();  // 品牌趋势：图例点击隐藏的品牌名集合
+function trendToggle(name) {
+  const h = window._trendHidden;
+  if (h.has(name)) h.delete(name); else h.add(name);
+  monRender();
+}
 let monFilter = { qids: null, time: '7', from: '', to: '', engines: null, tags: null, metric: 'mention_rate' };  // null=全部，Set=已选
 let monData = null;
 
@@ -1376,11 +1382,16 @@ function monCompute() {
   };
   /* AI推荐率（首推率）：品牌被 top1 推荐的样本占比 */
   overall.top1_rate = rate(ok.filter(s => s.brand_rank === 1));
-  const compSet = new Set((platform?.competitors || '').split(/[,,]/).map(x => x.trim()).filter(Boolean));
-  ok.forEach(s => (s.competitors_mentioned || []).forEach(c => compSet.add(c)));
+  /* 竞品名归一（淘天/淘宝 → 天猫），趋势图仅展示品牌档案配置的竞品 + 本品牌 */
+  const COMP_ALIAS = {'淘天': '天猫', '淘宝': '天猫'};
+  const normComp = c => COMP_ALIAS[c] || c;
+  const profileComps = (platform?.competitors || '').split(/[,,]/).map(x => normComp(x.trim())).filter(Boolean);
+  const compSet = new Set(profileComps);
+  ok.forEach(s => (s.competitors_mentioned || []).forEach(c => compSet.add(normComp(c))));
   const comps = [...compSet];
+  const compHit = (s, c) => (s.competitors_mentioned || []).map(normComp).includes(c);
   const rates = [{name: platform?.name || '我的品牌', rate: overall.mention_rate, own: true},
-    ...comps.map(c => ({name: c, rate: rate(ok.filter(s => (s.competitors_mentioned || []).includes(c)))}))]
+    ...comps.map(c => ({name: c, rate: rate(ok.filter(s => compHit(s, c)))}))]
     .sort((a, b) => b.rate - a.rate);
   const domCnt = {};
   ok.forEach(s => (s.cited_domains || []).forEach(dm => domCnt[dm] = (domCnt[dm] || 0) + 1));
@@ -1436,10 +1447,9 @@ function monCompute() {
       ? dates.map(dt => dAvgRank(byDate[dt]))
       : dates.map(dt => dRate(byDate[dt], s => s.brand_mentioned));
   const series = [{name: brandName, color: '#E6007E', solid: true, values: brandVals}];
-  if (metric === 'mention_rate') comps.forEach((c, i) => series.push({name: c, color: MON_PALETTE[i % MON_PALETTE.length], solid: false,
-    values: dates.map(dt => dRate(byDate[dt], s => (s.competitors_mentioned || []).includes(c)))}));
-  window._trendTips = dates.map((dt, i) => `<div class="text-xs font-semibold mb-1">${dt}</div>` +
-    series.map(s => `<div class="flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full inline-block" style="background:${s.color}"></span><span>${esc(s.name)}</span><b class="ml-auto pl-3">${s.values[i] != null ? s.values[i] + '%' : '—'}</b></div>`).join(''));
+  if (metric === 'mention_rate') comps.filter(c => profileComps.includes(c) && c !== brandName).forEach((c, i) =>
+    series.push({name: c, color: MON_PALETTE[(i + 1) % MON_PALETTE.length], solid: false,
+      values: dates.map(dt => dRate(byDate[dt], s => compHit(s, c)))}));
   return {pool, overall, rates, citations, engines, qrows, dates, series};
 }
 const monKpi = (label, val, cls = 'text-slate-800', desc = '') =>
@@ -1459,6 +1469,13 @@ function monRender() {
   }
   const d = monCompute();
   window._monRows = d.qrows;
+  /* 悬浮提示跟随可见品牌；平均排名指标不带 % 单位 */
+  {
+    const metric = monFilter.metric, unit = metric === 'avg_rank' ? '' : '%';
+    window._trendTips = d.dates.map((dt, i) => `<div class="text-xs font-semibold mb-1">${dt}</div>` +
+      d.series.filter(s => !window._trendHidden.has(s.name)).map(s =>
+        `<div class="flex items-center gap-1.5 text-xs"><span class="w-2 h-2 rounded-full inline-block" style="background:${s.color}"></span><span>${esc(s.name)}</span><b class="ml-auto pl-3">${s.values[i] != null ? s.values[i] + unit : '—'}</b></div>`).join(''));
+  }
   monRenderFilter(d);
   if (!d.pool.length) {
     body.innerHTML = '<div class="bg-white rounded-2xl p-12 text-center shadow-sm text-slate-400 text-sm">当前筛选范围内没有采样数据，请调整问题 / 时间 / 模型筛选</div>';
@@ -1501,10 +1518,12 @@ function monRender() {
             ${METRICS.map(([k, l]) => `<button onclick="monSetMetric('${k}')" class="text-xs px-3 py-1 rounded-full border ${metric === k ? 'bg-vip-600 border-vip-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-vip-300'}">${l}</button>`).join('')}
           </div>
         </div>
-        <div class="flex flex-wrap gap-3 mb-1">
-          ${d.series.map(s => `<span class="flex items-center gap-1.5 text-xs text-slate-500"><span class="inline-block w-4 h-0.5 rounded" style="background:${s.color};${s.solid ? '' : 'opacity:.8'}"></span>${esc(s.name)}</span>`).join('')}
+        <div class="flex flex-wrap gap-1 mb-1">
+          ${d.series.map(s => `<button onclick="trendToggle('${esc(s.name).replace(/'/g, "\\'")}')"
+            title="点击显示 / 隐藏该品牌" class="flex items-center gap-1.5 text-xs text-slate-500 px-1.5 py-0.5 rounded hover:bg-slate-50 ${window._trendHidden.has(s.name) ? 'opacity-30 line-through' : ''}">
+            <span class="inline-block w-4 h-0.5 rounded" style="background:${s.color};${s.solid ? '' : 'opacity:.8'}"></span>${esc(s.name)}</button>`).join('')}
         </div>
-        ${trendChart(d.series, d.dates, metric === 'avg_rank' ? {max: chartMax, reverse: true, unit: ''} : {max: 100, unit: '%'})}
+        ${trendChart(d.series.filter(s => !window._trendHidden.has(s.name)), d.dates, metric === 'avg_rank' ? {max: chartMax, reverse: true, unit: ''} : {max: 100, unit: '%'})}
         <div class="text-xs text-slate-400 mt-2">${metric === 'avg_rank' ? '平均排名：AI 回答中品牌出现的平均位次（越靠上越好）。' : metric === 'top3_rate' ? 'AI推荐率（前三位率）：品牌在AI回答中被前三位次推荐的占比。' : 'AI提及率：品牌在目标query查询中的出现率；虚线为竞品。'}</div>
       </div>
       <div class="bg-white rounded-2xl shadow-sm p-5">
@@ -1577,15 +1596,17 @@ function trendChart(series, dates, opts = {}) {
   for (let i = 0; i <= 4; i++) { const v = yAxis(i), ly = reverse ? T + ih * v / max : T + ih * (1 - v / max);
     grid += `<line x1="${L}" y1="${ly}" x2="${W - R}" y2="${ly}" stroke="#eef0f4"/><text x="${L - 8}" y="${ly + 3.5}" text-anchor="end" font-size="10" fill="#94a3b8">${v}${unit}</text>`; }
   let lines = '', pts = '';
-  /* 平滑曲线（中点二次贝塞尔）：折线 → 连续曲线，数据点仍精确着点 */
+  /* 平滑曲线（Catmull-Rom → 三次贝塞尔）：曲线精确经过每个数据点 */
   const smoothD = a => {
     if (a.length < 3) return 'M' + a.map(p => p.join(',')).join(' L');
     let d = `M${a[0][0]},${a[0][1]}`;
-    for (let i = 1; i < a.length - 1; i++) {
-      const mx = (a[i][0] + a[i + 1][0]) / 2, my = (a[i][1] + a[i + 1][1]) / 2;
-      d += ` Q${a[i][0]},${a[i][1]} ${mx},${my}`;
+    for (let i = 0; i < a.length - 1; i++) {
+      const p0 = a[Math.max(0, i - 1)], p1 = a[i], p2 = a[i + 1], p3 = a[Math.min(a.length - 1, i + 2)];
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0]},${p2[1]}`;
     }
-    return d + ` L${a[a.length - 1][0]},${a[a.length - 1][1]}`;
+    return d;
   };
   series.forEach(s => {
     const seg = s.values.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean);
