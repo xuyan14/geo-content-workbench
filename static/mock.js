@@ -218,7 +218,7 @@
   ];
 
   /* ---------- 工具 ---------- */
-  const delay = (ms) => new Promise(r => setTimeout(r, ms || 180 + Math.random() * 250));
+  const delay = (ms) => new Promise(r => setTimeout(r, ms || 30 + Math.random() * 70));  // 演示延迟 30-100ms（原 180-430ms 使重页面过慢）
   const statusLabel = { pending_review: '待审核', approved: '已通过', published: '已发布', rejected: '已驳回' };
   const withBody = (a, yes) => { const { body, ...rest } = a; return yes ? a : rest; };
 

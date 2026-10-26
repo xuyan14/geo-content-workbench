@@ -499,22 +499,28 @@ async function viewTopics() {
     return top3Cache[key];
   };
   const rows = [];
+  const pending = [];
   for (const q of mqueries) {
     const cur = latestRows.find(r => r.question === q.question);
     let mon = null;
     if (cur) {
       const prv = prevRows.find(r => r.question === q.question);
-      const curData = await fetchTop3(latestRunId, cur.id);
-      const prvData = prv ? await fetchTop3(prevRunId, prv.id) : null;
-      mon = {
-        qid: cur.id, latestRunId, active: q.active,
-        dates: [prev, latest].filter(Boolean).map(r => (r.started_at || '').slice(5, 10).replace('-', '/')),
-        cur: {row: cur, t3: curData.t3, samples: curData.samples},
-        prev: prv ? {row: prv, t3: prvData.t3} : null,
-      };
+      /* 并行拉取本期（与上期）样本计算 t3，避免逐问题串行等待 */
+      pending.push(Promise.all([
+        fetchTop3(latestRunId, cur.id),
+        prv ? fetchTop3(prevRunId, prv.id) : Promise.resolve(null),
+      ]).then(([curData, prvData]) => {
+        mon = {
+          qid: cur.id, latestRunId, active: q.active,
+          dates: [prev, latest].filter(Boolean).map(r => (r.started_at || '').slice(5, 10).replace('-', '/')),
+          cur: {row: cur, t3: curData.t3, samples: curData.samples},
+          prev: prv ? {row: prv, t3: prvData.t3} : null,
+        };
+      }));
     }
     rows.push({q, mon, topic: topics.find(t => t.keyword.trim() === q.question.trim()) || null});
   }
+  await Promise.all(pending);
   window._topicRows = rows;
   window._intentLabel = {buyer_intent: '买家意图', education: '需求教育', probe: '探测'};
   const dim = window._topicDim || '全部';
