@@ -1972,8 +1972,32 @@ function ansInTime(dateStr) {
 const ansTimeLabel = () => _ansState.time === 'custom'
   ? `${_ansState.from || '…'} ~ ${_ansState.to || '…'}`
   : (MON_TIMES.find(x => x[0] === _ansState.time) || ['', '近一周'])[1];
-function setAnsFilter(k, v) { _ansState[k] = v; renderAnswers(); }
-function setAnsSel(id) { _ansState.selected = id; renderAnswers(); }
+/* 在容器内的文本节点上高亮品牌名/别名（渲染后处理，不破坏 Markdown 已生成的 DOM 结构） */
+function hlBrand(container, aliases) {
+  const words = (aliases || []).map(a => String(a).trim()).filter(Boolean);
+  if (!container || !words.length) return;
+  const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(' + words.map(escRe).join('|') + ')', 'g');
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  const targets = [];
+  while (walker.nextNode()) if (re.test(walker.currentNode.nodeValue || '')) targets.push(walker.currentNode);
+  targets.forEach(node => {
+    const text = node.nodeValue, frag = document.createDocumentFragment();
+    let last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const mark = document.createElement('mark');
+      mark.className = 'bg-amber-200 rounded px-0.5';
+      mark.textContent = m[0];
+      frag.appendChild(mark);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+function setAnsFilter(k, v) { _ansState[k] = v; renderAnswers(); }function setAnsSel(id) { _ansState.selected = id; renderAnswers(); }
 function setAnsSearch(v) { _ansState.search = v; _ansState._focusSearch = true; renderAnswers(); }
 function renderAnswers() {
   const st = _ansState, view = document.getElementById('view');
@@ -2007,11 +2031,8 @@ function renderAnswers() {
   let detail;
   if (!sel) detail = '<div class="h-full flex items-center justify-center text-slate-300 text-sm">左侧选择一条对话查看内容详情</div>';
   else {
-    let html = esc(sel.answer || sel.error || '（空）');
-    for (const a of aliases) {
-      if (a) html = html.replace(new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-        m2 => `<mark class="bg-amber-200 rounded px-0.5">${m2}</mark>`);
-    }
+    /* 回答原文按 Markdown 渲染为文档样式；品牌高亮在渲染后按文本节点处理（见 renderAnswers 末尾 hlBrand） */
+    const html = sel.answer ? marked.parse(sel.answer) : esc(sel.error || '（空）');
     detail = `
     <div class="p-6">
       <div class="flex items-start justify-between gap-4">
@@ -2040,7 +2061,7 @@ function renderAnswers() {
           <b class="text-sm">${esc(sel.engine)}</b>
           ${sel.own_domain_cited ? '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">引用官网</span>' : ''}
         </div>
-        <div class="mt-2 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">${html}</div>
+        <div id="ans-body" class="mt-2 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed markdown">${html}</div>
         ${(sel.cited_domains || []).length ? `<div class="mt-2 flex flex-wrap gap-1.5">
           <span class="text-xs text-slate-400 leading-5">引用：</span>${sel.cited_domains.map(d2 => `<span class="text-xs px-2 py-0.5 rounded ${d2 === platform?.domain ? 'bg-vip-50 text-vip-600 font-medium' : 'bg-slate-100 text-slate-500'}">${esc(d2)}</span>`).join('')}</div>` : ''}
         ${(sel.competitors_mentioned || []).length ? `<div class="mt-1.5 text-xs text-slate-400">提及竞品：${sel.competitors_mentioned.map(esc).join('、')}</div>` : ''}
@@ -2070,6 +2091,10 @@ function renderAnswers() {
       </div>
       <div class="col-span-8 bg-white rounded-2xl shadow-sm overflow-y-auto" style="height:calc(100vh - 250px);min-height:420px">${detail}</div>
     </div>`;
+  if (sel && sel.answer) {
+    const box = document.getElementById('ans-body');
+    if (box) hlBrand(box, aliases);
+  }
   if (st._focusSearch) {
     const el = document.getElementById('ans-search');
     if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
