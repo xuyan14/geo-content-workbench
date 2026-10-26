@@ -1384,7 +1384,7 @@ function monCompute() {
     top3_rate: rate(ok.filter(s => s.brand_rank >= 1 && s.brand_rank <= 3)),
     avg_rank: ranks.length ? Math.round(100 * ranks.reduce((a, b) => a + b, 0) / ranks.length) / 100 : null,
   };
-  /* AI推荐率（首推率）：品牌被 top1 推荐的样本占比 */
+  /* Top1率：品牌被 top1 推荐的样本占比 */
   overall.top1_rate = rate(ok.filter(s => s.brand_rank === 1));
   /* 竞品名归一（淘天/淘宝 → 天猫），趋势图仅展示品牌档案配置的竞品 + 本品牌 */
   const COMP_ALIAS = {'淘天': '天猫', '淘宝': '天猫'};
@@ -1444,14 +1444,16 @@ function monCompute() {
     const rs = arr.filter(s => s.brand_rank).map(s => s.brand_rank);
     return rs.length ? Math.round(100 * rs.reduce((a, b) => a + b, 0) / rs.length) / 100 : null;
   };
-  /* 指标序列：提及率（品牌+竞品）/ 前三提及率（仅品牌）/ 平均排名（仅品牌） */
+  /* 指标序列：提及率（品牌+竞品）/ Top1率 / Top3率 / 平均提及排名（仅品牌） */
   const metric = monFilter.metric;
   const brandName = platform?.name || '我的品牌';
   const brandVals = metric === 'top3_rate'
     ? dates.map(dt => dRate(byDate[dt], s => s.brand_rank >= 1 && s.brand_rank <= 3))
-    : metric === 'avg_rank'
-      ? dates.map(dt => dAvgRank(byDate[dt]))
-      : dates.map(dt => dRate(byDate[dt], s => s.brand_mentioned));
+    : metric === 'top1_rate'
+      ? dates.map(dt => dRate(byDate[dt], s => s.brand_rank === 1))
+      : metric === 'avg_rank'
+        ? dates.map(dt => dAvgRank(byDate[dt]))
+        : dates.map(dt => dRate(byDate[dt], s => s.brand_mentioned));
   const series = [{name: brandName, color: '#E6007E', solid: true, values: brandVals}];
   if (metric === 'mention_rate') comps.filter(c => profileComps.includes(c) && c !== brandName).forEach((c, i) =>
     series.push({name: c, color: MON_PALETTE[(i + 1) % MON_PALETTE.length], solid: false,
@@ -1489,12 +1491,13 @@ function monRender() {
   }
   const maxR = Math.max(...d.rates.map(r => r.rate), 1);
   const myRank = d.rates.findIndex(r => r.own) + 1;
-  const METRICS = [['mention_rate', 'AI提及率'], ['top3_rate', 'AI推荐率（前三位率）'], ['avg_rank', '平均排名']];
+  const METRICS = [['mention_rate', '提及率'], ['top1_rate', 'Top1率'], ['top3_rate', 'Top3率'], ['avg_rank', '平均提及排名']];
   const metric = monFilter.metric;
   const metricName = (METRICS.find(x => x[0] === metric) || ['', ''])[1];
   const chartVals = d.series[0].values.filter(v => v != null);
   const chartMax = metric === 'avg_rank' ? Math.max(4, ...chartVals.map(v => Math.ceil(v))) : 100;
   const periodVal = metric === 'top3_rate' ? d.overall.top3_rate + '%'
+    : metric === 'top1_rate' ? d.overall.top1_rate + '%'
     : metric === 'avg_rank' ? (d.overall.avg_rank != null ? '#' + d.overall.avg_rank : '—')
     : d.overall.mention_rate + '%';
   body.innerHTML = `
@@ -1530,7 +1533,7 @@ function monRender() {
             <span class="inline-block w-4 h-0.5 rounded" style="background:${s.color};${s.solid ? '' : 'opacity:.8'}"></span>${esc(s.name)}</button>`).join('')}
         </div>
         ${trendChart(d.series.filter(s => !window._trendHidden.has(s.name)), d.dates, metric === 'avg_rank' ? {max: chartMax, reverse: true, unit: ''} : {max: 100, unit: '%'})}
-        <div class="text-xs text-slate-400 mt-2">${metric === 'avg_rank' ? '平均排名：AI 回答中品牌出现的平均位次（越靠上越好）。' : metric === 'top3_rate' ? 'AI推荐率（前三位率）：品牌在AI回答中被前三位次推荐的占比。' : 'AI提及率：品牌在目标query查询中的出现率；虚线为竞品。'}</div>
+        <div class="text-xs text-slate-400 mt-2">${metric === 'avg_rank' ? '平均提及排名：AI 回答中品牌首次被提及的平均位次（越靠上越好）。' : metric === 'top3_rate' ? 'Top3率：品牌在 AI 回答中被前三位次推荐的占比。' : metric === 'top1_rate' ? 'Top1率：品牌被 AI 列为第 1 推荐的占比。' : '提及率：品牌在目标问题回答中的出现率；虚线为竞品。'}</div>
       </div>
       <div class="bg-white rounded-2xl shadow-sm p-5">
         <div class="flex items-center divide-x divide-slate-100 text-center mb-4">
@@ -1538,7 +1541,7 @@ function monRender() {
           <div class="flex-1"><div class="text-xs text-slate-400">周期${metricName}</div><div class="font-bold mt-0.5">${periodVal}</div></div>
           <div class="flex-1"><div class="text-xs text-slate-400">平均排名</div><div class="font-bold mt-0.5">${d.overall.avg_rank != null ? '#' + d.overall.avg_rank : '—'}</div></div>
         </div>
-        <div class="text-xs text-slate-400 mb-1.5">AI提及率排行</div>
+        <div class="text-xs text-slate-400 mb-1.5">提及率排行</div>
         ${d.rates.map((r, i) => `<div class="flex items-center gap-2 py-1.5 ${r.own ? '-mx-2 px-2 bg-vip-50 rounded-lg' : ''}">
           <span class="w-5 text-xs ${i < 3 ? 'font-semibold text-slate-600' : 'text-slate-400'}">${i + 1}</span>
           <span class="flex-1 truncate text-sm ${r.own ? 'text-vip-700 font-semibold' : 'text-slate-600'}">${esc(r.name)}</span>
