@@ -570,8 +570,9 @@ function renderTopicRows() {
       <div class="px-4 py-3 hover:bg-slate-50 ${sel.has(q.id) ? 'bg-vip-50/40' : ''}" style="${COLS}">
         <input type="checkbox" class="w-4 h-4 accent-vip-600" ${sel.has(q.id) ? 'checked' : ''} onchange="topicRowSel(${q.id}, this.checked)">
         <div class="min-w-0">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <span class="font-medium text-sm truncate" style="max-width:400px" title="${esc(q.question)}">${esc(q.question)}</span>
+          <div class="flex items-center gap-1.5 min-w-0" data-q="${esc(q.question)}"
+            onmouseenter="qTip(event, this)" onmousemove="svgTipMove(event)" onmouseleave="qTipHide()">
+            <span class="font-medium text-sm truncate" style="max-width:400px">${esc(q.question)}</span>
             ${topic && topic.status === 'used' ? '<span class="shrink-0 text-[11px] px-1.5 py-px rounded bg-slate-100/70 text-slate-400">已生成</span>' : ''}
           </div>
           <div class="mt-1 flex items-center gap-1 flex-wrap">${tagChips(q.tags)}</div>
@@ -1585,8 +1586,20 @@ const monTimeLabel = () => monFilter.time === 'custom'
 
 /* ---- 品牌趋势（重点视图：多品牌提及率走势 + 提及率排行） ---- */
 function svgTip(e, i) { const t = document.getElementById('svg-tip'); t.innerHTML = (window._trendTips || [])[i] || ''; t.style.display = 'block'; svgTipMove(e); }
-function svgTipMove(e) { const t = document.getElementById('svg-tip'); t.style.left = Math.min(e.clientX + 14, window.innerWidth - 200) + 'px'; t.style.top = (e.clientY - 10) + 'px'; }
+function svgTipMove(e) { const t = document.getElementById('svg-tip'); t.style.left = Math.max(8, Math.min(e.clientX + 14, window.innerWidth - (t.offsetWidth || 176) - 12)) + 'px'; t.style.top = (e.clientY - 10) + 'px'; }
 function svgTipHide() { document.getElementById('svg-tip').style.display = 'none'; }
+/* 选题库：问题行即时悬浮提示（完整问题文本，无延迟） */
+function qTip(e, el) {
+  const t = document.getElementById('svg-tip');
+  t.innerHTML = `<div class="text-xs leading-5 text-slate-600 whitespace-normal break-words">${el.dataset.q}</div>`;
+  t.style.width = 'auto'; t.style.maxWidth = '440px';
+  t.style.display = 'block';
+  svgTipMove(e);
+}
+function qTipHide() {
+  const t = document.getElementById('svg-tip');
+  t.style.display = 'none'; t.style.width = ''; t.style.maxWidth = '';
+}
 function trendChart(series, dates, opts = {}) {
   const max = opts.max || 100, reverse = !!opts.reverse, unit = opts.unit != null ? opts.unit : '%';
   const W = 720, H = 250, L = 40, R = 12, T = 12, B = 24;
