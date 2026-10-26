@@ -695,7 +695,9 @@ _ENGINE_MAP = {
 # ---------- 词包标签（GEO 词包 xlsx → wordpack_tags.json，7 维标签字典） ----------
 # 平台侧提问未打业务标签，此处按归一化文本匹配词包，命中返回 {维度: 值} dict，
 # 未命中返回 []（前端 tagChips/hasTagDim 同时兼容 dict 与数组形状）。
+# 加载优先级：data/internal/wordpack_tags.json（真实词包，目录不入库）→ app/wordpack_tags.json（公开演示词包）
 _WORDPACK_FILE = Path(__file__).resolve().parent / "wordpack_tags.json"
+_WORDPACK_INTERNAL = Path(__file__).resolve().parent.parent / "data" / "internal" / "wordpack_tags.json"
 _wordpack_cache: Optional[Dict[str, Dict[str, str]]] = None
 
 
@@ -706,10 +708,15 @@ def _wp_norm(s: str) -> str:
 def _wp_tags(question: str):
     global _wordpack_cache
     if _wordpack_cache is None:
-        try:
-            with open(_WORDPACK_FILE, encoding="utf-8") as f:
-                _wordpack_cache = {_wp_norm(k): v for k, v in (json.load(f) or {}).items()}
-        except Exception:
+        for f in (_WORDPACK_INTERNAL, _WORDPACK_FILE):
+            try:
+                if f.exists():
+                    with open(f, encoding="utf-8") as fp:
+                        _wordpack_cache = {_wp_norm(k): v for k, v in (json.load(fp) or {}).items()}
+                    break
+            except Exception:
+                continue
+        else:
             _wordpack_cache = {}
     return _wordpack_cache.get(_wp_norm(question)) or []
 
