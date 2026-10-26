@@ -570,8 +570,10 @@ function renderTopicRows() {
       <div class="px-4 py-3 hover:bg-slate-50 ${sel.has(q.id) ? 'bg-vip-50/40' : ''}" style="${COLS}">
         <input type="checkbox" class="w-4 h-4 accent-vip-600" ${sel.has(q.id) ? 'checked' : ''} onchange="topicRowSel(${q.id}, this.checked)">
         <div class="min-w-0">
-          <div class="font-medium text-sm truncate">${esc(q.question)}
-            ${topic && topic.status === 'used' ? '<span class="ml-1.5 text-[11px] px-1.5 py-px rounded bg-slate-100/70 text-slate-400">已生成</span>' : ''}</div>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="font-medium text-sm truncate" style="max-width:400px" title="${esc(q.question)}">${esc(q.question)}</span>
+            ${topic && topic.status === 'used' ? '<span class="shrink-0 text-[11px] px-1.5 py-px rounded bg-slate-100/70 text-slate-400">已生成</span>' : ''}
+          </div>
           <div class="mt-1 flex items-center gap-1 flex-wrap">${tagChips(q.tags)}</div>
         </div>
         ${mon ? `
