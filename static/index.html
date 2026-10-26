@@ -637,7 +637,8 @@ async function delRowMon(i) {
 }
 function gotoRowAnswers(i) {
   const r = rowAt(i); if (!r) return;
-  _ansState = {engine: '全部', verdict: '全部', question: r.q.question};
+  /* 完整重置筛选状态（缺失 time 会导致时间过滤判空），跳转用全部时间保证目标问题可见 */
+  _ansState = {time: 'all', from: '', to: '', engine: '全部', verdict: '全部', search: '', question: r.q.question};
   location.hash = '#/answers';
 }
 async function genFromRow(i) {
@@ -1336,8 +1337,8 @@ function renderMonOpsbar() {
   el.innerHTML = `
     <span>监测问题 <b class="text-slate-600">${s.monitor_queries ?? '—'}</b></span>${sep}
     <span>知识卡 <b class="text-slate-600">${window._monCards || '—'}</b></span>${sep}
-    <span>内容总数 <b class="text-slate-600">${s.articles ?? '—'}</b></span>
-    <span>待审核 <b class="text-amber-500">${s.articles_by_status?.pending_review || 0}</b></span>
+    <span>内容总数 <b class="text-slate-600">${s.articles ?? '—'}</b></span>${sep}
+    <span>待审核 <b class="text-amber-500">${s.articles_by_status?.pending_review || 0}</b></span>${sep}
     <span>已发布 <b class="text-emerald-600">${s.articles_by_status?.published || 0}</b></span>
     <span class="ml-auto flex items-center gap-1 text-slate-300">内容生产正常运转<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span></span>`;
 }
@@ -1762,8 +1763,8 @@ function monQModal() {
       <div class="font-bold text-lg mb-4">选择分析问题</div>
       <div class="flex gap-2 mb-3">
         <input id="mon-q-search" placeholder="搜索问题" oninput="window._monQSearch=this.value;monQRenderList()"
-          class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-vip-200">
-        <button onclick="monQGroupAll()" class="text-sm text-vip-600 border border-vip-200 rounded-lg px-3 py-2 hover:bg-vip-50 whitespace-nowrap">全选本组</button>
+          class="flex-1 h-8 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2 focus:ring-vip-200">
+        <button onclick="monQGroupAll()" class="h-8 text-sm text-vip-600 border border-vip-200 rounded-lg px-3 hover:bg-vip-50 whitespace-nowrap">全选本组</button>
       </div>
       <div id="mon-q-groups" class="flex flex-wrap gap-1.5 mb-3"></div>
       <div id="mon-q-list" class="border border-slate-100 rounded-xl divide-y divide-slate-50 max-h-[46vh] overflow-y-auto"></div>
@@ -1901,7 +1902,7 @@ function monApplyEng() {
 }
 async function gotoMonAnswers(qid) {
   const row = (window._monRows || []).find(r => r.id === qid);
-  _ansState = {question: row ? row.question : null};
+  if (row) _ansState = {time: 'all', from: '', to: '', engine: '全部', verdict: '全部', search: '', question: row.question};
   location.hash = '#/answers';
 }
 
@@ -1946,11 +1947,14 @@ async function viewAnswers() {
       });
     }));
     _ansState = {..._ansState, items, _runs: completed, _runsKey: runsKey};
-    if (_ansState.question) {
-      const hit = items.find(s => s.question === _ansState.question);
-      _ansState.selected = hit ? hit.id : null;
-      _ansState.question = null;
-    }
+  }
+  /* 跳转定位：按问题文本选中其第一条对话（一次性消费，不依赖缓存是否重载） */
+  if (_ansState.question) {
+    const q = _ansState.question;
+    const hit = (_ansState.items || []).find(s => s.question === q);
+    if (hit) _ansState.selected = hit.id;
+    else { _ansState.search = q; toast('该问题暂无采样回答记录', 'info'); }
+    _ansState.question = null;
   }
   renderAnswers();
 }
