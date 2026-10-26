@@ -1384,13 +1384,16 @@ function monCompute() {
     .sort((a, b) => b.rate - a.rate);
   const domCnt = {};
   ok.forEach(s => (s.cited_domains || []).forEach(dm => domCnt[dm] = (domCnt[dm] || 0) + 1));
-  /* 可见引用份额：全部引用中指向本品牌官方域名的比例 */
+  /* 被信任口径：品牌官方域名引用次数 / 信源引用占比 / 引用了官方域名的样本占比 */
   {
     const ownDom = (platform?.domain || 'starselect.example.com').replace(/^www\./, '');
     const domTotal = Object.values(domCnt).reduce((a, b) => a + b, 0);
     const ownCnt = Object.entries(domCnt).filter(([dm]) => dm.includes(ownDom))
       .reduce((a, [, c]) => a + c, 0);
+    overall.own_cite_cnt = ownCnt;
     overall.cite_share = domTotal ? Math.round(1000 * ownCnt / domTotal) / 10 : 0;
+    overall.own_cite_rate = ok.length
+      ? Math.round(1000 * ok.filter(s => (s.cited_domains || []).some(dm => dm.includes(ownDom)) || s.own_domain_cited).length / ok.length) / 10 : 0;
   }
   const citations = Object.entries(domCnt).map(([domain, count]) => ({domain, count})).sort((a, b) => b.count - a.count).slice(0, 15);
   const engMap = {};
@@ -1473,11 +1476,22 @@ function monRender() {
     : d.overall.mention_rate + '%';
   body.innerHTML = `
     <div class="text-xs text-slate-400 mb-2">基于 <b class="text-slate-500">${d.overall.samples}</b> 条采样回答 · <b class="text-slate-500">${d.dates.length}</b> 个采样日（口径见各指标下方说明）</div>
-    <div class="grid grid-cols-4 gap-3 mb-5">
-      ${monKpi('AI提及率', d.overall.mention_rate + '%', 'text-vip-600', '品牌在目标query查询中的出现率')}
-      ${monKpi('可见引用份额', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-vip-600', '在特定AI回答的所有引用中，指向本品牌的比例')}
-      ${monKpi('AI推荐率（首推率）', d.overall.top1_rate + '%', 'text-sky-600', '品牌在AI回答中被top1推荐的占比')}
-      ${monKpi('AI推荐率（前三位率）', d.overall.top3_rate + '%', 'text-sky-600', '品牌在AI回答中被前三位次推荐的占比')}
+    <div class="mb-4">
+      <div class="flex items-center gap-2 mb-2"><span class="font-semibold card-title">被看见</span><span class="text-xs text-slate-400">品牌在 AI 回答中被提及与推荐的程度</span></div>
+      <div class="grid grid-cols-4 gap-3">
+        ${monKpi('提及率', d.overall.mention_rate + '%', 'text-vip-600', '品牌在目标query回答中的出现率')}
+        ${monKpi('Top1率', d.overall.top1_rate + '%', 'text-vip-600', '品牌被AI列为第1推荐的占比')}
+        ${monKpi('Top3率', d.overall.top3_rate + '%', 'text-vip-600', '品牌位列前三位次推荐的占比')}
+        ${monKpi('平均提及排名', d.overall.avg_rank != null ? '#' + d.overall.avg_rank : '—', 'text-vip-600', '品牌首次被提及的平均位次，越小越好')}
+      </div>
+    </div>
+    <div class="mb-5">
+      <div class="flex items-center gap-2 mb-2"><span class="font-semibold card-title">被信任</span><span class="text-xs text-slate-400">品牌作为可信信源被 AI 引用的程度</span></div>
+      <div class="grid grid-cols-3 gap-3">
+        ${monKpi('品牌引用次数', d.overall.own_cite_cnt || 0, 'text-emerald-600', '全部回答中引用品牌官方域名的总次数')}
+        ${monKpi('品牌信源引用率', (d.overall.cite_share != null ? d.overall.cite_share : 0) + '%', 'text-emerald-600', '品牌域名引用占全部引用的比例')}
+        ${monKpi('官方引用率', (d.overall.own_cite_rate || 0) + '%', 'text-emerald-600', '引用了品牌官方域名的回答占比')}
+      </div>
     </div>
     <div class="grid grid-cols-3 gap-6">
       <div class="col-span-2 bg-white rounded-2xl shadow-sm p-5">

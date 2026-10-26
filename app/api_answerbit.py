@@ -732,6 +732,16 @@ def _brand_name(db) -> str:
         return ""
 
 
+def _brand_domain(db) -> str:
+    """本地平台档案官方域名（用于引用域名归属判定）。"""
+    try:
+        from .models import Brand
+        b = db.query(Brand).first()
+        return (b.domain if b else "") or ""
+    except Exception:
+        return ""
+
+
 def _compat_build(client: AnswerbitClient, brand_name: str = "") -> Dict[str, Any]:
     """组装与本地 API 相同形状的 queries/runs/samples（缓存 1 小时）。"""
     key = f"{client.brand_id}"
@@ -876,16 +886,26 @@ def ab_runs(db):
     return _compat(db, "runs")
 
 
-def _ensure_answers(client: AnswerbitClient, rows: list):
-    """懒加载某批次样本的回答原文（task_detail.llm_output），写回缓存。"""
+def _ensure_answers(client: AnswerbitClient, rows: list, brand_domain: str = ""):
+    """懒加载某批次样本的回答原文与引用域名（task_detail.llm_output/links），写回缓存。"""
     todo = [r for r in rows if r.get("_ab_task_id") and not r.get("answer")]
     if not todo:
         return
+    dom = (brand_domain or "").lower()
+    dom = dom[4:] if dom.startswith("www.") else dom
     for rec in todo:
         with _detail_sem:
             try:
                 detail = client.task_detail(task_id=rec["_ab_task_id"]) or {}
                 rec["answer"] = detail.get("llm_output") or ""
+                # 引用域名（links 内 URL 的 host，去 www.）；含品牌官方域 → own_domain_cited
+                domains = sorted({str(l.get("url") or "").split("/")[2].lower()
+                                  for l in (detail.get("links") or [])
+                                  if "://" in str(l.get("url") or "")})
+                domains = [d[4:] if d.startswith("www.") else d for d in domains]
+                if domains:
+                    rec["cited_domains"] = domains
+                    rec["own_domain_cited"] = bool(dom) and any(dom in d for d in domains)
             except (ApiError, AuthError, NetworkError):
                 pass
 
@@ -898,7 +918,7 @@ def ab_samples(db, run_id, query_id=None):
     if query_id is not None:
         rows = [s for s in rows if str(s["query_id"]) == str(query_id)]
     try:
-        _ensure_answers(client, rows)
+        _ensure_answers(client, rows, _brand_domain(db))
     except Exception:
         pass
     return [{k: v for k, v in s.items() if not k.startswith("_")} for s in rows]
