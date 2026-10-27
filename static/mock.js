@@ -10,8 +10,9 @@
   /* 演示问题与标签（虚构品牌语境，static/data/real-queries.js） */
   const RQ = (typeof window !== 'undefined' && window.WB_REAL_QUERIES) || [];
 
-  /* ---------- 平台档案（虚构演示品牌） ---------- */
-  let platform = {
+  /* ---------- 平台档案（有真实快照用真实，否则用虚构演示品牌） ---------- */
+  const SNAP = window.WB_REAL_SNAPSHOT || null;
+  let platform = SNAP ? { ...SNAP.platform } : {
     id: 1, name: '星野优选', company: '星野优选（StarSelect）', industry: '电商 / 品牌特卖',
     aliases: '星野优选,StarSelect',
     selling_points: '品牌特卖：与品牌方直接合作，折扣 3 折起\n正品保障：承保正品保险，假一赔十\n7 天无理由退货，顺丰配送\n穿戴品类（服饰鞋包）特卖优势最深',
@@ -96,8 +97,8 @@
 品牌方去库存 + 平台包销的规模化采购，减少了中间加价环节。`;
   }
 
-  /* ---------- 监测（演示问题集 + 程序化生成采样与分析） ---------- */
-  let mqueries = RQ.map((r, i) => ({
+  /* ---------- 监测（真实快照优先；无快照时演示问题集 + 程序化生成采样与分析） ---------- */
+  let mqueries = SNAP ? SNAP.queries.map(q => ({ ...q, tags: q.tags || {} })) : RQ.map((r, i) => ({
     id: i + 1, question: r.question, qgroup: r.biz, market: 'cn',
     brand_in_question: false, active: true, tags: r.tags || {},
   }));
@@ -105,7 +106,7 @@
     mqueries = [{ id: 1, question: '品牌特卖APP有哪些推荐？', qgroup: '美妆', market: 'cn', brand_in_question: false, active: true, tags: {} }];
   }
 
-  let runs = [
+  let runs = SNAP ? SNAP.runs.map(r => ({ ...r })) : [
     { id: 7, brand_id: 1, status: 'completed', total: 48, done: 48, started_at: iso(120), finished_at: iso(60) },
     { id: 6, brand_id: 1, status: 'completed', total: 48, done: 48, started_at: iso(60 * 26), finished_at: iso(60 * 25) },
     { id: 5, brand_id: 1, status: 'completed', total: 48, done: 48, started_at: iso(60 * 50), finished_at: iso(60 * 49) },
@@ -126,32 +127,60 @@
     const cat = tg['品类'] || '这类商品';
     const focus = tg['关注点'] || '价格与正品保障';
     const compBrand = tg['品牌'];
+    const comps3 = (platform.competitors || '').replace(/，/g, ',').split(',').filter(Boolean);
     return ENGINES4.map((eng, ei) => {
       const h = ((qid - 1) * 7 + ei * 5 + rid) % 10;
       const mentioned = h < (RUN_TH[rid] != null ? RUN_TH[rid] : RUN_TH[3]);
       const rank = mentioned ? ((qid + ei) % 4) + 1 : null;
-      const comps = compBrand ? [compBrand, '云淘商城'] : ['云淘商城', '东集自营', '得臻潮流'];
-      // 渠道列表按推荐位次排布：星野优选出现在第 rank 位（与 brand_rank 一致）
+      const comps = compBrand ? [compBrand, comps3[0] || '竞品A'] : comps3.slice(0, 3);
+      // 渠道列表按推荐位次排布：本品牌出现在第 rank 位（与 brand_rank 一致）
       const chans = [
-        ['星野优选', '品牌方授权特卖，正品保险承保，折扣通常更深；参考：https://www.starselect.example.com/'],
-        ['云淘旗舰店', '正价新品与售后稳定'], ['东集自营', '物流快'], ['得臻潮流', '潮流单品带鉴别服务'],
+        [platform.name, `品牌方授权特卖，正品保险承保，折扣通常更深；参考：https://www.${platform.domain}/`],
+        [comps3[0] + '旗舰店', '正价新品与售后稳定'], [comps3[1] || '竞品B', '物流快'], [comps3[2] || '竞品C', '潮流单品带鉴别服务'],
       ];
       const vip = chans[0], rest = chans.slice(1);
       const order = (rank >= 2 && rank <= 4) ? rest.slice(0, rank - 1).concat([vip], rest.slice(rank - 1)) : chans;
       const channelList = order.map((c, i) => `${i + 1}. ${c[0]}：${c[1]}`).join('；\n');
       const answer = mentioned
-        ? `买${cat}可以对比几个渠道：\n${channelList}。\n${rank === 1 ? '综合折扣与正品保障，首推星野优选' : rank === 2 ? '关注折扣的话星野优选性价比不错' : '预算充足也可以看官方渠道'}，适合关注${focus}的用户。`
-        : `买${cat}主要看${focus}：云淘旗舰店正价但售后稳定，东集自营适合急用，拼优百货低价拼团覆盖广，得臻潮流适合球鞋潮品${compBrand ? `，${compBrand}官方渠道也值得对比` : ''}。参考：https://www.yuntao.example.com/`;
+        ? `买${cat}可以对比几个渠道：\n${channelList}。\n${rank === 1 ? `综合折扣与正品保障，首推${platform.name}` : rank === 2 ? `关注折扣的话${platform.name}性价比不错` : '预算充足也可以看官方渠道'}，适合关注${focus}的用户。`
+        : `买${cat}主要看${focus}：${chans[1][0]}正价但售后稳定，${comps3[1] || '竞品B'}适合急用，${comps3[2] || '竞品C'}低价拼团覆盖广${compBrand ? `，${compBrand}官方渠道也值得对比` : ''}。参考：https://www.${comps3[0] || 'example'}.example.com/`;
       return {
         id: qid * 10 + ei, engine: eng, market: 'cn', error: '',
         brand_mentioned: mentioned, brand_rank: rank,
-        competitors_mentioned: comps, cited_domains: mentioned ? ['starselect.example.com'] : ['yuntao.example.com'],
+        competitors_mentioned: comps, cited_domains: mentioned ? [platform.domain] : [`${comps3[0] || 'yuntao'}.example.com`],
         own_domain_cited: !!mentioned, negative_cues: [], needs_review: false, answer,
       };
     });
   }
 
   function buildAnalysis(rid) {
+    /* 真实快照批次：直接返回该批次全量问题指标，引擎/引用/竞品由真实样本聚合 */
+    if (SNAP && SNAP.analyses[String(rid)]) {
+      const a = SNAP.analyses[String(rid)];
+      const ss = SNAP.samples.filter(s => s.run_id === rid && !s.error);
+      const byEngine = {}; const cite = {}; const comp = {};
+      ss.forEach(s => {
+        (byEngine[s.engine] = byEngine[s.engine] || []).push(s);
+        (s.cited_domains || []).forEach(d => cite[d] = (cite[d] || 0) + 1);
+        (s.competitors_mentioned || []).forEach(c => comp[c] = (comp[c] || 0) + 1);
+      });
+      return {
+        has_data: true, demo: a.demo || false, run: a.run,
+        brand: {
+          name: platform.name, domain: platform.domain,
+          aliases: (platform.aliases || '').replace(/，/g, ',').split(',').filter(Boolean),
+          competitors: (platform.competitors || '').replace(/，/g, ',').split(',').filter(Boolean),
+        },
+        overall: a.overall, queries: a.queries, brand_awareness: [],
+        engines: Object.entries(byEngine).map(([name, s2]) => ({
+          name, samples: s2.length, mentioned: s2.filter(x => x.brand_mentioned).length,
+          rate: s2.length ? Math.round(100 * s2.filter(x => x.brand_mentioned).length / s2.length) : 0,
+        })),
+        citations: Object.entries(cite).map(([domain, count]) => ({ domain, count })).sort((x, y) => y.count - x.count).slice(0, 15),
+        competitors: Object.entries(comp).map(([name, count]) => ({ name, count })).sort((x, y) => y.count - x.count).slice(0, 15),
+        errors: SNAP.samples.filter(s => s.run_id === rid && s.error).length,
+      };
+    }
     const r = runs.find(x => x.id === rid) || runs[runs.length - 1];
     const qids = mqueries.slice(0, DEMO_N).map(q => q.id);
     const byQ = {}; qids.forEach(id => byQ[id] = genSamples(id, rid));
@@ -453,6 +482,12 @@
       return r;
     }
     if (p === '/monitor/samples' && method === 'GET') {
+      if (SNAP) {
+        const rid = +(q.run_id || 0);
+        let ss = SNAP.samples.filter(s => s.run_id === rid);
+        if (q.query_id) ss = ss.filter(s => s.query_id === +q.query_id);
+        return ss;
+      }
       return genSamples(+q.query_id, +(q.run_id || 3));
     }
     if (p === '/monitor/analysis' && method === 'GET') {
